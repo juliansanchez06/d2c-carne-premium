@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { initializeApp } from 'firebase/app'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 
-// ─── FIREBASE CONFIG ───────────────────────────────────────────
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyChzGFeNj350hf0zP6_g1BdqlwHo0i1uRM",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "modelod2d.firebaseapp.com",
@@ -15,1102 +14,826 @@ const firebaseApp = initializeApp(firebaseConfig)
 const db = getFirestore(firebaseApp)
 const DOC_REF = doc(db, 'd2c-carne', 'config')
 
-// ─── DEFAULTS ──────────────────────────────────────────────────
 const DEFAULTS = {
-  // Bloque 1
-  b1_ternero: 1316000, b1_supl: 105000, b1_racion: 385000,
-  b1_sanidad: 18000, b1_personal: 28000, peso_vivo: 450,
-  rinde_gancho: 58, rinde_carnicero: 75, animales_semana: 3,
-  // Bloque 2
-  b2_flete1: 25000, b2_faena: 40000, b2_flete2: 60000,
-  b2_guias: 6000, b2_recupero: 15000, b2_iibb: 8000, b2_contingencia: 25000,
-  // Bloque 3
-  b3_alquiler: 600000, b3_luz: 320000, b3_sueldo1: 900000,
-  b3_sueldo2: 550000, b3_insumos: 200000, b3_amort: 220000,
-  b3_mant: 90000, b3_seguros: 150000, b3_obra: 250000,
-  // Bloque 4
-  b4_pack: 4000, b4_pedidos: 60, b4_delivery: 2000,
-  b4_mp: 5.99, b4_mkt: 200000, b4_web: 50000, b4_ventas: 400000,
-  precio_venta: 20000,
-  // Suplementación
-  s_dia: 500, s_meses: 7, s_anim: 144, s_gdp: 0.65, s_gdpsin: 0.25, s_pnov: 4400,
-  // Inquilino
-  inq_animales: 80, inq_kg: 5.5, inq_precio: 4400, inq_precio_t: 6580, inq_meses: 12,
-  // Flujo de caja
-  cj_inversion: 15000000, cj_ramp1: 30, cj_ramp2: 55, cj_ramp3: 75, cj_ramp4: 90,
-  // Mix de cortes (kg, precio por corte)
-  mix: [
-    { nombre: 'Lomo', kg: 8, precio: 28000 },
-    { nombre: 'Bife de chorizo', kg: 12, precio: 22000 },
-    { nombre: 'Cuadril', kg: 18, precio: 22000 },
-    { nombre: 'Vacío', kg: 15, precio: 23000 },
-    { nombre: 'Nalga', kg: 16, precio: 22000 },
-    { nombre: 'Peceto', kg: 7, precio: 24000 },
-    { nombre: 'Tapa de asado', kg: 8, precio: 18000 },
-    { nombre: 'Matambre', kg: 6, precio: 19000 },
-    { nombre: 'Bola de lomo', kg: 8, precio: 20000 },
-    { nombre: 'Asado de tira', kg: 35, precio: 18500 },
-    { nombre: 'Paleta', kg: 18, precio: 17500 },
-    { nombre: 'Tortuguita', kg: 10, precio: 17000 },
-    { nombre: 'Picada / recortes', kg: 15, precio: 12000 },
-    { nombre: 'Falda', kg: 10, precio: 12000 },
+  b1_ternero:1316000,b1_supl:105000,b1_racion:385000,b1_sanidad:18000,b1_personal:28000,
+  peso_vivo:450,rinde_gancho:58,rinde_carnicero:75,animales_semana:3,
+  b2_flete1:25000,b2_faena:40000,b2_flete2:60000,b2_guias:6000,b2_recupero:15000,b2_iibb:8000,b2_contingencia:25000,
+  b3_alquiler:600000,b3_luz:320000,b3_sueldo1:900000,b3_sueldo2:550000,b3_insumos:200000,b3_amort:220000,b3_mant:90000,b3_seguros:150000,b3_obra:250000,
+  b4_pack:4000,b4_pedidos:60,b4_delivery:2000,b4_mp:5.99,b4_mkt:200000,b4_web:50000,b4_ventas:400000,
+  precio_venta:20000,
+  s_dia:500,s_meses:7,s_anim:144,s_gdp:0.65,s_gdpsin:0.25,s_pnov:4400,
+  inq_animales:80,inq_kg:5.5,inq_precio:4400,inq_precio_t:6580,inq_meses:12,
+  cj_inversion:15000000,cj_ramp1:30,cj_ramp2:55,cj_ramp3:75,cj_ramp4:90,
+  pinned:{},
+  mix:[
+    {nombre:'Lomo',kg:8,precio:28000},{nombre:'Bife de chorizo',kg:12,precio:22000},
+    {nombre:'Cuadril',kg:18,precio:22000},{nombre:'Vacío',kg:15,precio:23000},
+    {nombre:'Nalga',kg:16,precio:22000},{nombre:'Peceto',kg:7,precio:24000},
+    {nombre:'Tapa de asado',kg:8,precio:18000},{nombre:'Matambre',kg:6,precio:19000},
+    {nombre:'Bola de lomo',kg:8,precio:20000},{nombre:'Asado de tira',kg:35,precio:18500},
+    {nombre:'Paleta',kg:18,precio:17500},{nombre:'Tortuguita',kg:10,precio:17000},
+    {nombre:'Picada / recortes',kg:15,precio:12000},{nombre:'Falda',kg:10,precio:12000},
   ]
 }
 
-// ─── HELPERS ────────────────────────────────────────────────────
 const fmt = (n) => '$' + Math.round(n).toLocaleString('es-AR')
-const fmtPct = (n) => (Math.round(n * 10) / 10).toFixed(1) + '%'
+const fmtPct = (n) => (Math.round(n*10)/10).toFixed(1)+'%'
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-// ─── STYLES ─────────────────────────────────────────────────────
-const S = {
-  app: { background: '#0D1210', minHeight: '100vh', color: '#D0E4C8', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
-  identity: { background: '#060C06', borderBottom: '2px solid #2E7D48', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 46 },
-  brand: { fontFamily: "'Instrument Serif', serif", fontSize: 16, color: '#E8F2E0' },
-  brandEm: { fontStyle: 'italic', color: '#52C278' },
-  nav: { background: '#141A16', borderBottom: '2px solid #334438', display: 'flex', padding: '0 24px', height: 50, alignItems: 'flex-end', gap: 2, overflowX: 'auto' },
-  subnav: { background: '#1A2218', borderBottom: '1px solid #263028', display: 'flex', padding: '0 24px', height: 40, alignItems: 'center', gap: 4, overflowX: 'auto' },
-  strip: { background: '#141A16', borderBottom: '1px solid #263028', padding: '8px 24px', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' },
-  panel: { padding: '20px 24px' },
-  finLayout: { display: 'grid', gridTemplateColumns: '1fr 340px', minHeight: 'calc(100vh - 180px)' },
-  finLeft: { padding: '20px 24px', overflowY: 'auto', borderRight: '1px solid #263028' },
-  finRight: { padding: '20px 18px', background: '#060C06', position: 'sticky', top: 0, maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' },
-  section: { marginBottom: 16, border: '1px solid #263028', borderRadius: 5, overflow: 'hidden' },
-  sectionHdr: { background: '#1A2218', padding: '7px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #263028' },
-  row: { display: 'grid', gridTemplateColumns: '1fr 140px 90px', alignItems: 'center', borderBottom: '1px solid #263028', padding: '0 12px', minHeight: 38 },
-  rowLabel: { color: '#849E80', fontSize: 10, padding: '6px 0', lineHeight: 1.3 },
-  rowSub: { display: 'block', color: '#4A6048', fontSize: 8, marginTop: 1 },
-  input: { width: '100%', background: '#1A2218', border: '1px solid #334438', borderRadius: 3, padding: '3px 6px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: '#E8F2E0', textAlign: 'right', outline: 'none' },
-  unit: { fontSize: 8, color: '#4A6048', whiteSpace: 'nowrap', minWidth: 22 },
-  infoBox: { background: '#141A16', border: '1px solid #263028', borderRadius: 4, padding: '12px 14px', marginTop: 10 },
-  infoTitle: { fontFamily: "'Instrument Serif', serif", fontSize: 13, color: '#E8F2E0', marginBottom: 7 },
-  infoBody: { fontSize: 9, color: '#849E80', lineHeight: 1.8 },
-  kpiGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 14 },
-  kpi: (variant) => ({
-    background: variant === 'green' ? '#1A4028' : variant === 'amber' ? '#221A08' : variant === 'red' ? '#221008' : '#141A16',
-    border: `1px solid ${variant === 'green' ? '#2E7D48' : variant === 'amber' ? '#8A6A18' : variant === 'red' ? '#8A2018' : '#263028'}`,
-    borderRadius: 4, padding: '9px 10px'
-  }),
-  kpiLabel: (variant) => ({ fontSize: 8, color: variant === 'green' ? '#52C278' : variant === 'amber' ? '#D4A843' : variant === 'red' ? '#C85A4A' : '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }),
-  kpiVal: (variant) => ({ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: variant === 'green' ? '#52C278' : variant === 'amber' ? '#D4A843' : variant === 'red' ? '#C85A4A' : '#E8F2E0', lineHeight: 1 }),
-  kpiSub: { fontSize: 8, color: '#4A6048', marginTop: 1 },
-  badge: (variant) => ({ fontSize: 9, padding: '2px 8px', borderRadius: 20, border: `1px solid ${variant === 'live' ? '#2E7D48' : variant === 'new' ? '#8A6A18' : variant === 'audit' ? '#8A2018' : '#334438'}`, color: variant === 'live' ? '#52C278' : variant === 'new' ? '#D4A843' : variant === 'audit' ? '#C85A4A' : '#4A6048', background: variant === 'audit' ? '#221008' : variant === 'new' ? '#221A08' : 'transparent' }),
-  table: { width: '100%', borderCollapse: 'collapse', marginBottom: 12 },
-  th: { fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em', padding: '5px 7px', textAlign: 'left', borderBottom: '1px solid #263028' },
-  td: { padding: '4px 7px', borderBottom: '1px solid #263028', fontSize: 9, color: '#849E80' },
-  riskCard: (level) => ({ background: '#141A16', border: `1px solid #263028`, borderLeft: `3px solid ${level === 'critical' ? '#C85A4A' : level === 'medium' ? '#D4A843' : '#52C278'}`, borderRadius: 4, padding: '12px 14px' }),
-  auditBanner: { background: '#221008', border: '1px solid #8A2018', borderRadius: 5, padding: '10px 14px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'flex-start' },
-  bar: (color, pct) => ({ height: '100%', width: `${Math.min(100, Math.max(0, pct))}%`, background: color, borderRadius: 3, transition: 'width .4s ease' }),
-  barTrack: { height: 5, background: '#1A2218', borderRadius: 3, overflow: 'hidden', marginTop: 2 },
-  saveStatus: { fontSize: 8, color: '#4A6048', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 },
+// Colors
+const C = {
+  bg:'#F7F8FA',surface:'#FFFFFF',surface2:'#F0F4F8',border:'#E2E8F0',border2:'#CBD5E1',
+  text:'#1A202C',text2:'#4A5568',text3:'#94A3B8',
+  green:'#16A34A',greenBg:'#F0FDF4',greenBorder:'#86EFAC',greenDark:'#14532D',
+  amber:'#D97706',amberBg:'#FFFBEB',amberBorder:'#FCD34D',
+  red:'#DC2626',redBg:'#FEF2F2',redBorder:'#FCA5A5',
+  blue:'#2563EB',blueBg:'#EFF6FF',blueBorder:'#93C5FD',
+  indigo:'#4F46E5',indigoBg:'#EEF2FF',
+  navy:'#1E3A5F',
+}
+const sh = '0 1px 3px rgba(0,0,0,0.08)'
+const shMd = '0 4px 6px rgba(0,0,0,0.07)'
+
+const GS = `
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;font-size:13px;}
+  input[type=number]{-moz-appearance:textfield;}
+  input[type=number]::-webkit-inner-spin-button{display:none;}
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-thumb{background:${C.border2};border-radius:3px;}
+  .rh:hover{background:${C.surface2}!important;}
+  .nbtn:hover{background:${C.surface2};}
+  .tbtn:hover{color:${C.indigo}!important;}
+  .sbtn:hover{transform:translateY(-1px);box-shadow:${shMd};}
+  .pbtn:hover{background:${C.indigoBg}!important;border-color:${C.indigo}!important;}
+`
+
+// ── UI Primitives ──────────────────────────────────────────────
+function Alert({type='warning',icon,title,body}){
+  const t={warning:{bg:C.amberBg,border:C.amberBorder,tc:'#92400E',bc:'#78350F',ib:'#FEF3C7'},error:{bg:C.redBg,border:C.redBorder,tc:C.red,bc:'#7F1D1D',ib:'#FEE2E2'},info:{bg:C.blueBg,border:C.blueBorder,tc:C.blue,bc:'#1E40AF',ib:'#DBEAFE'},success:{bg:C.greenBg,border:C.greenBorder,tc:C.green,bc:C.greenDark,ib:'#DCFCE7'}}[type]
+  return <div style={{background:t.bg,border:`1px solid ${t.border}`,borderRadius:10,padding:'12px 16px',marginBottom:16,display:'flex',gap:12}}>
+    <div style={{width:32,height:32,borderRadius:8,background:t.ib,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>{icon}</div>
+    <div><div style={{fontSize:12,fontWeight:600,color:t.tc,marginBottom:3}}>{title}</div><div style={{fontSize:11,color:t.bc,lineHeight:1.6}}>{body}</div></div>
+  </div>
 }
 
-// ─── NAV BUTTON ─────────────────────────────────────────────────
-function NavBtn({ active, onClick, children }) {
-  return (
-    <button onClick={onClick} style={{ padding: '9px 16px', fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer', border: 'none', background: 'none', color: active ? '#E8F2E0' : '#4A6048', borderBottom: active ? '2px solid #52C278' : '2px solid transparent', marginBottom: -2, transition: 'all .15s', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' }}>
-      {children}
-    </button>
-  )
+function Kpi({label,value,sub,variant='default',full,large}){
+  const vs={default:{bg:C.surface,border:C.border,lc:C.text3,vc:C.text},green:{bg:C.greenBg,border:C.greenBorder,lc:C.green,vc:C.greenDark},amber:{bg:C.amberBg,border:C.amberBorder,lc:C.amber,vc:'#92400E'},red:{bg:C.redBg,border:C.redBorder,lc:C.red,vc:'#7F1D1D'},blue:{bg:C.blueBg,border:C.blueBorder,lc:C.blue,vc:'#1E40AF'},navy:{bg:C.navy,border:C.navy,lc:'#93C5FD',vc:'#FFF'}}[variant]
+  return <div style={{background:vs.bg,border:`1px solid ${vs.border}`,borderRadius:12,padding:'14px 16px',boxShadow:sh,gridColumn:full?'1/-1':undefined}}>
+    <div style={{fontSize:10,fontWeight:600,color:vs.lc,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4}}>{label}</div>
+    <div style={{fontFamily:"'Fraunces',serif",fontSize:large?28:22,color:vs.vc,lineHeight:1,fontWeight:600}}>{value}</div>
+    {sub&&<div style={{fontSize:10,color:vs.lc,marginTop:4,opacity:.8}}>{sub}</div>}
+  </div>
 }
 
-function SubNavBtn({ active, onClick, children, audit }) {
-  return (
-    <button onClick={onClick} style={{ padding: '4px 12px', fontSize: 9, letterSpacing: '.07em', textTransform: 'uppercase', cursor: 'pointer', border: `1px solid ${active ? (audit ? '#8A2018' : '#2E7D48') : 'transparent'}`, background: active ? (audit ? '#221008' : '#1A4028') : 'none', color: active ? (audit ? '#C85A4A' : '#52C278') : '#4A6048', borderRadius: 3, transition: 'all .12s', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' }}>
-      {children}
-    </button>
-  )
+function NavBtn({active,onClick,icon,label}){
+  return <button onClick={onClick} className="nbtn" style={{padding:'9px 16px',fontSize:12,fontWeight:active?600:500,cursor:'pointer',border:'none',borderRadius:8,background:active?C.navy:'transparent',color:active?'#FFF':C.text2,display:'flex',alignItems:'center',gap:7,transition:'all .15s',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif"}}><span>{icon}</span>{label}</button>
 }
 
-// ─── INPUT ROW ──────────────────────────────────────────────────
-function InputRow({ label, sub, id, value, onChange, unit, result, resultColor, updated, fullSpan }) {
-  return (
-    <div style={{ ...S.row, background: updated ? 'rgba(212,168,67,.05)' : 'transparent', borderLeft: updated ? '2px solid #8A6A18' : 'none', gridTemplateColumns: fullSpan ? '1fr' : '1fr 140px 90px' }}>
-      <div style={S.rowLabel}>
-        {label}{updated && <span style={{ color: '#D4A843', fontSize: 8 }}> ★</span>}
-        {sub && <small style={S.rowSub}>{sub}</small>}
+function Tab({active,onClick,label}){
+  return <button onClick={onClick} className="tbtn" style={{padding:'7px 16px',fontSize:11,fontWeight:active?600:400,cursor:'pointer',border:'none',borderBottom:active?`2px solid ${C.indigo}`:'2px solid transparent',background:'transparent',color:active?C.indigo:C.text3,transition:'all .12s',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif"}}>{label}</button>
+}
+
+function SaveBtn({onSave,saved}){
+  return <button onClick={onSave} className="sbtn" style={{padding:'8px 20px',fontSize:12,fontWeight:600,cursor:'pointer',border:'none',borderRadius:8,background:saved?C.greenBg:C.navy,color:saved?C.green:'#FFF',display:'flex',alignItems:'center',gap:7,fontFamily:"'DM Sans',sans-serif",boxShadow:sh,transition:'all .15s'}}>{saved?'✓ Guardado':'💾 Guardar'}</button>
+}
+
+function PinBtn({pinned,onPin}){
+  return <button onClick={onPin} className="pbtn" title={pinned?'Fijado — clic para liberar':'Fijar valor de referencia'} style={{width:28,height:28,borderRadius:6,border:`1px solid ${pinned?C.indigo:C.border2}`,background:pinned?C.indigoBg:'transparent',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,flexShrink:0,transition:'all .12s'}}>{pinned?'📌':'📍'}</button>
+}
+
+function Card({title,subtitle,badge,badgeColor,children}){
+  const bc={green:{bg:C.greenBg,c:C.green,b:C.greenBorder},amber:{bg:C.amberBg,c:C.amber,b:C.amberBorder},red:{bg:C.redBg,c:C.red,b:C.redBorder},blue:{bg:C.blueBg,c:C.blue,b:C.blueBorder}}[badgeColor]||{bg:C.blueBg,c:C.blue,b:C.blueBorder}
+  return <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,overflow:'hidden',marginBottom:20,boxShadow:sh}}>
+    <div style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:C.surface2}}>
+      <div>
+        {badge&&<span style={{fontSize:10,fontWeight:600,color:bc.c,background:bc.bg,border:`1px solid ${bc.b}`,padding:'2px 8px',borderRadius:20,marginRight:10,letterSpacing:'.05em'}}>{badge}</span>}
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:15,color:C.text,fontWeight:600}}>{title}</span>
+        {subtitle&&<span style={{fontSize:11,color:C.text3,marginLeft:10}}>{subtitle}</span>}
       </div>
-      {!fullSpan && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <input type="number" value={value} onChange={e => onChange(e.target.value)} style={S.input} />
-            <span style={S.unit}>{unit}</span>
-          </div>
-          <div style={{ textAlign: 'right', fontSize: 10, color: resultColor || '#D0E4C8', paddingLeft: 5, fontWeight: 500 }}>{result}</div>
-        </>
-      )}
     </div>
-  )
+    {children}
+  </div>
 }
 
-// ─── SECTION ────────────────────────────────────────────────────
-function Section({ label, title, total, totalWarn, children }) {
-  return (
-    <div style={S.section}>
-      <div style={S.sectionHdr}>
-        <div>
-          <div style={{ fontSize: 8, color: '#52C278', letterSpacing: '.12em', textTransform: 'uppercase' }}>{label}</div>
-          <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 13, color: '#E8F2E0', fontWeight: 400 }}>{title}</div>
-        </div>
-        {total && <div style={{ fontSize: 10, color: totalWarn ? '#D4A843' : '#52C278', fontWeight: 500 }}>{total}</div>}
-      </div>
-      {children}
+function IRow({label,sub,value,onChange,unit,result,resultColor,updated,pinned,onPin}){
+  return <div className="rh" style={{display:'grid',gridTemplateColumns:'1fr 160px 105px 36px',alignItems:'center',borderBottom:`1px solid ${C.border}`,padding:'0 20px',minHeight:44,background:pinned?'#FAFAFF':'transparent',borderLeft:updated?`3px solid ${C.amber}`:'3px solid transparent'}}>
+    <div style={{fontSize:12,color:C.text2,padding:'6px 0 6px 4px',lineHeight:1.3}}>
+      {updated&&<span style={{fontSize:9,fontWeight:700,color:C.amber,marginRight:6,letterSpacing:'.05em'}}>MAY-26</span>}
+      {label}
+      {sub&&<span style={{display:'block',fontSize:10,color:C.text3,marginTop:1}}>{sub}</span>}
     </div>
-  )
-}
-
-// ─── MAIN APP ───────────────────────────────────────────────────
-function App() {
-  const [mod, setMod] = useState('fin')
-  const [finTab, setFinTab] = useState('costos')
-  const [prodTab, setProdTab] = useState('gantt')
-  const [auditTab, setAuditTab] = useState('riesgos')
-  const [cajaTab, setCajaTab] = useState('mensual')
-  const [saveStatus, setSaveStatus] = useState('cargando...')
-  const [vals, setVals] = useState(DEFAULTS)
-  const debounceRef = useRef(null)
-
-  // ── LOAD FROM FIRESTORE ──
-  useEffect(() => {
-    getDoc(DOC_REF).then(snap => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setVals(prev => ({
-          ...prev,
-          ...data,
-          mix: data.mix || prev.mix
-        }))
-        setSaveStatus('sincronizado ✓')
-      } else {
-        setSaveStatus('nuevo documento')
-      }
-    }).catch(() => setSaveStatus('sin conexión'))
-  }, [])
-
-  // ── SAVE TO FIRESTORE (debounced 900ms) ──
-  const save = useCallback((newVals) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    setSaveStatus('guardando...')
-    debounceRef.current = setTimeout(() => {
-      setDoc(DOC_REF, newVals, { merge: true })
-        .then(() => setSaveStatus('guardado ✓'))
-        .catch(() => setSaveStatus('error al guardar'))
-    }, 900)
-  }, [])
-
-  const set = useCallback((key, val) => {
-    const parsed = key === 'mix' ? val : (parseFloat(val) || 0)
-    setVals(prev => {
-      const next = { ...prev, [key]: parsed }
-      save(next)
-      return next
-    })
-  }, [save])
-
-  const setMixItem = useCallback((i, field, val) => {
-    setVals(prev => {
-      const newMix = prev.mix.map((c, idx) => idx === i ? { ...c, [field]: parseFloat(val) || 0 } : c)
-      const next = { ...prev, mix: newMix }
-      save(next)
-      return next
-    })
-  }, [save])
-
-  // ── CALCULATIONS ──
-  const v = vals
-  const kgG = v.peso_vivo * (v.rinde_gancho / 100)
-  const kgN = kgG * (v.rinde_carnicero / 100)
-  const kgNS = kgN * v.animales_semana
-
-  const b1 = v.b1_ternero + v.b1_supl + v.b1_racion + v.b1_sanidad + v.b1_personal
-  const b1S = b1 * v.animales_semana
-  const b2raw = v.b2_flete1 + v.b2_faena + v.b2_flete2 + v.b2_guias + v.b2_iibb + v.b2_contingencia - v.b2_recupero
-  const b2S = b2raw * v.animales_semana
-  const b3m = v.b3_alquiler + v.b3_luz + v.b3_sueldo1 + v.b3_sueldo2 + v.b3_insumos + v.b3_amort + v.b3_mant + v.b3_seguros + v.b3_obra
-  const b3S = b3m / 4.33
-  const mktS = (v.b4_mkt + v.b4_web + v.b4_ventas) / 4.33
-  const packS = v.b4_pack * v.b4_pedidos
-  const delS = v.b4_delivery * v.b4_pedidos
-  const ingB = v.precio_venta * kgNS
-  const mpS = ingB * (v.b4_mp / 100)
-  const b4S = packS + delS + mktS + mpS
-  const cvS = (b1 + b2raw) * v.animales_semana
-  const cfS = b3S + mktS + packS + delS
-  const totS = cvS + cfS + mpS
-  const costoKg = kgNS > 0 ? totS / kgNS : 0
-  const margenKg = v.precio_venta - costoKg
-  const margenPct = v.precio_venta > 0 ? (margenKg / v.precio_venta) * 100 : 0
-  const resSem = ingB - totS
-  const resMes = resSem * 4.33
-
-  // Mix
-  const mixTotKg = v.mix.reduce((a, c) => a + c.kg, 0)
-  const mixTotIng = v.mix.reduce((a, c) => a + c.kg * c.precio * v.animales_semana, 0)
-  const mixPrecio = mixTotKg > 0 ? mixTotIng / mixTotKg / v.animales_semana : 0
-  const mixMargen = mixTotIng - totS
-  const mixMes = mixMargen * 4.33
-
-  // Supl
-  const sDias = v.s_meses * 30
-  const sCostoA = v.s_dia * sDias
-  const sKgEx = (v.s_gdp - v.s_gdpsin) * sDias
-  const sValEx = sKgEx * v.s_pnov
-  const sDiasAh = v.s_gdpsin > 0 ? sKgEx / v.s_gdpsin : 0
-  const sRes = sValEx + sDiasAh * 80 - sCostoA
-  const sKgNetA = (200 + sKgEx) * 0.58 * 0.75
-  const sCostoKg = sKgNetA > 0 ? sCostoA / sKgNetA : 0
-
-  // Inquilino
-  const inqIngM = v.inq_animales * v.inq_kg * v.inq_precio
-  const inqIngA = inqIngM * v.inq_meses
-  const inqTerneros = Math.round(inqIngA / (200 * v.inq_precio_t))
-  const inqRed = Math.round((inqTerneros / 67) * 100)
-
-  // Caja
-  const rampMap = (m) => m <= 1 ? v.cj_ramp1 : m <= 3 ? v.cj_ramp2 : m <= 6 ? v.cj_ramp3 : v.cj_ramp4
-  const ingMFull = ingB * 4.33
-  const costoVarM = cvS * 4.33
-  const costoFijM = cfS * 4.33 + mpS * 4.33
-
-  let acum = -v.cj_inversion
-  let beMonth = -1
-  const cajaRows = MESES.map((mes, idx) => {
-    const pct = rampMap(idx + 1)
-    const ing = ingMFull * (pct / 100)
-    const cv2 = costoVarM * (pct / 100)
-    const res = ing - cv2 - costoFijM
-    acum += res
-    if (acum >= 0 && beMonth < 0) beMonth = idx + 1
-    return { mes, pct, ing, cv2, res, acum }
-  })
-
-  // Breakdown kg
-  const b1kg = kgNS > 0 ? b1S / kgNS : 0
-  const b2kg = kgNS > 0 ? b2S / kgNS : 0
-  const b3kg = kgNS > 0 ? b3S / kgNS : 0
-  const b4kg = kgNS > 0 ? b4S / kgNS : 0
-  const maxKg = Math.max(b1kg, b2kg, b3kg, b4kg, 1)
-
-  // ── RENDER ──
-  return (
-    <div style={S.app}>
-      {/* IDENTITY */}
-      <div style={S.identity}>
-        <div style={S.brand}>
-          D2C Carne Premium · <em style={S.brandEm}>Sol de Julio → Río Cuarto</em>
-        </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={S.badge('default')}>100 vacas madre</span>
-          <span style={S.badge('default')}>77% destete</span>
-          <span style={S.badge('new')}>★ Mayo 2026</span>
-          <span style={S.badge('audit')}>⚑ Auditado</span>
-          <span style={S.badge('live')}>● Firestore</span>
-          <span style={{ ...S.saveStatus }}>{saveStatus}</span>
-        </div>
-      </div>
-
-      {/* PRIMARY NAV */}
-      <div style={S.nav}>
-        {[['fin','◎ Financiero'],['mix','⊞ Mix Cortes'],['caja','⟳ Flujo Caja'],['prod','⊕ Cinta Productiva'],['audit','⚑ Auditoría']].map(([id, label]) => (
-          <NavBtn key={id} active={mod === id} onClick={() => setMod(id)}>{label}</NavBtn>
-        ))}
-      </div>
-
-      {/* ══ MÓDULO FINANCIERO ══ */}
-      {mod === 'fin' && (
-        <>
-          <div style={S.subnav}>
-            {[['costos','Producción campo'],['faena','Faena y logística'],['local','Operativo local'],['comercial','Comercialización'],['resumen','→ Resultado']].map(([id, label]) => (
-              <SubNavBtn key={id} active={finTab === id} onClick={() => setFinTab(id)}>{label}</SubNavBtn>
-            ))}
-          </div>
-          {/* strip */}
-          <div style={S.strip}>
-            <SSItem label="Kg netos/sem" val={Math.round(kgNS) + ' kg'} color="#52C278" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Costo/kg" val={fmt(costoKg)} color="#D4A843" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Precio mix" val={fmt(v.precio_venta)} />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Margen bruto" val={fmt(margenKg) + '/kg'} color={margenKg >= 0 ? '#52C278' : '#C85A4A'} />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Resultado/mes" val={fmt(resMes)} color={resMes >= 0 ? '#52C278' : '#C85A4A'} />
-          </div>
-
-          <div style={S.finLayout}>
-            <div style={S.finLeft}>
-              {/* RENDIMIENTO */}
-              <div style={{ border: '1px solid #8A6A18', borderRadius: 5, overflow: 'hidden', marginBottom: 16 }}>
-                <div style={{ background: '#8A6A18', padding: '7px 12px', display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#E8F2E0', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-                  <span>Cadena de rendimiento</span>
-                  <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 12, textTransform: 'none', letterSpacing: 0 }}>Del kilo vivo al kg vendible · factor 0.435</span>
-                </div>
-                <div style={{ background: '#221A08', padding: 12, display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: 8, alignItems: 'center' }}>
-                  {[['Peso vivo', Math.round(v.peso_vivo), 'kg/animal'], ['','',''], ['Media res', Math.round(kgG), 'kg/animal'], ['','',''], ['Carne neta', Math.round(kgN), 'kg/animal']].map((item, i) => (
-                    i % 2 === 0 ? (
-                      <div key={i} style={{ background: '#141A16', border: '1px solid #334438', borderRadius: 4, padding: 9, textAlign: 'center' }}>
-                        <div style={{ fontSize: 8, color: '#4A6048' }}>{item[0]}</div>
-                        <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 22, color: '#D4A843', lineHeight: 1, margin: '2px 0' }}>{item[1]}</div>
-                        <div style={{ fontSize: 9, color: '#849E80' }}>{item[2]}</div>
-                      </div>
-                    ) : (
-                      <div key={i} style={{ textAlign: 'center', color: '#D4A843', fontSize: 8, lineHeight: 1.5 }}>
-                        {i === 1 ? '× 58%\ngancho\n→' : '× 75%\ncarnicero\n→'}
-                      </div>
-                    )
-                  ))}
-                </div>
-              </div>
-
-              {/* BLOQUE 1 */}
-              {finTab === 'costos' && (
-                <Section label="Bloque 1 · Precios mayo 2026" title="Costo de producción en campo" total={fmt(b1S) + '/sem'} totalWarn>
-                  <InputRow label="Ternero de destete (180–200 kg)" sub="CACG abr-2026: $6.580/kg prom → 200 kg = $1.316.000" id="b1_ternero" value={v.b1_ternero} onChange={val => set('b1_ternero', val)} unit="$/cab" result={fmt(v.b1_ternero)} updated />
-                  <InputRow label="Suplementación invernal (210 días × $500/día)" sub="Mayo–noviembre · 7 meses" id="b1_supl" value={v.b1_supl} onChange={val => set('b1_supl', val)} unit="$/cab" result={fmt(v.b1_supl)} updated />
-                  <InputRow label="Ración feedlot 100 días" sub="10–12 kg/día × $350/kg ración" id="b1_racion" value={v.b1_racion} onChange={val => set('b1_racion', val)} unit="$/cab" result={fmt(v.b1_racion)} updated />
-                  <InputRow label="Sanidad integral" id="b1_sanidad" value={v.b1_sanidad} onChange={val => set('b1_sanidad', val)} unit="$/cab" result={fmt(v.b1_sanidad)} updated />
-                  <InputRow label="Personal + infraestructura campo (prorrateado)" id="b1_personal" value={v.b1_personal} onChange={val => set('b1_personal', val)} unit="$/cab" result={fmt(v.b1_personal)} updated />
-                  <div style={{ ...S.row, background: '#1A2218' }}>
-                    <div style={{ ...S.rowLabel, fontWeight: 500, color: '#E8F2E0' }}>Peso vivo objetivo</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <input type="number" value={v.peso_vivo} onChange={e => set('peso_vivo', e.target.value)} style={S.input} />
-                      <span style={S.unit}>kg/cab</span>
-                    </div>
-                    <div style={{ textAlign: 'right', fontSize: 10, color: '#D4A843', fontWeight: 500 }}>{fmt(v.peso_vivo > 0 ? b1 / v.peso_vivo : 0)}/kg</div>
-                  </div>
-                  <div style={{ padding: '6px 12px', background: '#1A1408', fontSize: 8, color: '#4A6048', lineHeight: 1.6 }}>★ El costo del ternero era $180.000 en el modelo original. La diferencia real es <span style={{ color: '#D4A843' }}>+$1.136.000/cabeza</span> con precios de mayo 2026.</div>
-                </Section>
-              )}
-
-              {/* BLOQUE 2 */}
-              {finTab === 'faena' && (
-                <Section label="Bloque 2 · Actualizado mayo 2026" title="Faena y logística" total={fmt(b2S) + '/sem'}>
-                  <InputRow label="Flete campo → frigorífico origen (~180 km)" updated id="b2_flete1" value={v.b2_flete1} onChange={val => set('b2_flete1', val)} unit="$/cab" result={fmt(v.b2_flete1)} />
-                  <InputRow label="Faena maquila (SENASA + pesaje + cámara 48h)" updated id="b2_faena" value={v.b2_faena} onChange={val => set('b2_faena', val)} unit="$/cab" result={fmt(v.b2_faena)} />
-                  <InputRow label="Flete refrigerado → Río Cuarto (~500 km)" updated id="b2_flete2" value={v.b2_flete2} onChange={val => set('b2_flete2', val)} unit="$/cab" result={fmt(v.b2_flete2)} />
-                  <InputRow label="Guías, DT electrónico, certificados SENASA" id="b2_guias" value={v.b2_guias} onChange={val => set('b2_guias', val)} unit="$/cab" result={fmt(v.b2_guias)} />
-                  <InputRow label="Recupero menudencias (descuenta costo)" id="b2_recupero" value={v.b2_recupero} onChange={val => set('b2_recupero', val)} unit="$/cab" result={'−' + fmt(v.b2_recupero)} resultColor="#52C278" />
-                  <InputRow label="IIBB + impuestos sobre faena" id="b2_iibb" value={v.b2_iibb} onChange={val => set('b2_iibb', val)} unit="$/cab" result={fmt(v.b2_iibb)} />
-                  <InputRow label="Reserva contingencia DFD / pérdida lote" sub="⚑ Nuevo — 1 animal con corte oscuro cada 8 sem. ≈ 1.8% costo" updated id="b2_contingencia" value={v.b2_contingencia} onChange={val => set('b2_contingencia', val)} unit="$/cab" result={fmt(v.b2_contingencia)} />
-                </Section>
-              )}
-
-              {/* BLOQUE 3 */}
-              {finTab === 'local' && (
-                <Section label="Bloque 3 · Actualizado mayo 2026" title="Costo operativo — Centro Río Cuarto" total={fmt(b3S) + '/sem'}>
-                  {[
-                    ['Alquiler del local', 'b3_alquiler', '$/mes', true],
-                    ['Electricidad (cámara + envasadora)', 'b3_luz', '$/mes', true],
-                    ['Despostador / maestro carnicero', 'b3_sueldo1', '$/mes', true],
-                    ['Operario envasado + armado pedidos', 'b3_sueldo2', '$/mes', true],
-                    ['Insumos envasado al vacío', 'b3_insumos', '$/mes', true],
-                    ['Amortización maquinaria (5 años)', 'b3_amort', '$/mes', true],
-                    ['Mantenimiento + limpieza + sanitización', 'b3_mant', '$/mes', false],
-                    ['Seguros + habilitaciones + impuestos', 'b3_seguros', '$/mes', true],
-                    ['Adecuación edilicia SENASA (amort. 12 meses)', 'b3_obra', '$/mes', true],
-                  ].map(([label, key, unit, updated]) => (
-                    <InputRow key={key} label={label} updated={updated} value={v[key]} onChange={val => set(key, val)} unit={unit} result={fmt(v[key] / 4.33) + '/sem'} />
-                  ))}
-                </Section>
-              )}
-
-              {/* BLOQUE 4 */}
-              {finTab === 'comercial' && (
-                <Section label="Bloque 4 · Actualizado mayo 2026" title="Costos de comercialización D2C" total={fmt(b4S) + '/sem'}>
-                  <InputRow label="Packaging por pedido" sub="⚑ Bolsas premium D2C reales: $3.500–5.000/pedido" updated value={v.b4_pack} onChange={val => set('b4_pack', val)} unit="$/pedido" result={fmt(v.b4_pack)} />
-                  <InputRow label="Pedidos promedio / semana" value={v.b4_pedidos} onChange={val => set('b4_pedidos', val)} unit="pedidos" result={fmt(packS) + '/sem'} />
-                  <InputRow label="Delivery última milla (costo/pedido)" updated value={v.b4_delivery} onChange={val => set('b4_delivery', val)} unit="$/pedido" result={fmt(delS) + '/sem'} />
-                  <InputRow label="Comisión pasarela de pago" value={v.b4_mp} onChange={val => set('b4_mp', val)} unit="%" result={fmt(mpS) + '/sem'} />
-                  <InputRow label="Marketing digital mensual" updated value={v.b4_mkt} onChange={val => set('b4_mkt', val)} unit="$/mes" result={fmt(v.b4_mkt / 4.33) + '/sem'} />
-                  <InputRow label="Web + e-commerce + herramientas" value={v.b4_web} onChange={val => set('b4_web', val)} unit="$/mes" result={fmt(v.b4_web / 4.33) + '/sem'} />
-                  <InputRow label="Responsable ventas / gestión digital" sub="⚑ Nuevo — rol crítico para el canal D2C" updated value={v.b4_ventas} onChange={val => set('b4_ventas', val)} unit="$/mes" result={fmt(v.b4_ventas / 4.33) + '/sem'} />
-                </Section>
-              )}
-
-              {/* RESULTADO */}
-              {finTab === 'resumen' && (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
-                    <div style={S.infoBox}>
-                      <div style={S.infoTitle}>Composición del costo por kg</div>
-                      {[['Campo', b1kg, '#2E7D48'], ['Faena + logística', b2kg, '#8A6A18'], ['Operativo local', b3kg, '#1A3A5C'], ['Comercialización', b4kg, '#8A2018']].map(([label, val, color]) => (
-                        <div key={label} style={{ marginBottom: 6 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#4A6048', marginBottom: 2 }}>
-                            <span>{label}</span><span style={{ color: '#D0E4C8' }}>{fmt(val)}/kg</span>
-                          </div>
-                          <div style={S.barTrack}><div style={S.bar(color, val / maxKg * 100)} /></div>
-                        </div>
-                      ))}
-                      <div style={{ marginTop: 12, padding: 8, background: '#1A4028', borderRadius: 3, border: '1px solid #2E7D48' }}>
-                        <div style={{ fontSize: 8, color: '#52C278', marginBottom: 2 }}>Precio mínimo de equilibrio</div>
-                        <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: '#E8F2E0' }}>{fmt(costoKg)}/kg</div>
-                        <div style={{ fontSize: 8, color: '#4A6048' }}>Para 30% de margen: <span style={{ color: '#52C278' }}>{fmt(costoKg / 0.7)}/kg</span></div>
-                      </div>
-                    </div>
-                    <div style={S.infoBox}>
-                      <div style={S.infoTitle}>Escenarios de venta parcial</div>
-                      <table style={S.table}>
-                        <thead><tr><th style={S.th}>% Vendido</th><th style={S.th}>Kg</th><th style={S.th}>Resultado</th></tr></thead>
-                        <tbody>
-                          {[100, 90, 80, 70, 60, 50].map(pct => {
-                            const kgV = kgNS * (pct / 100)
-                            const res2 = v.precio_venta * kgV - (cvS * (pct / 100) + cfS + mpS * (pct / 100))
-                            return (
-                              <tr key={pct}>
-                                <td style={{ ...S.td, color: pct >= 70 ? '#52C278' : '#C85A4A' }}>{pct}%</td>
-                                <td style={{ ...S.td, textAlign: 'right' }}>{Math.round(kgV)} kg</td>
-                                <td style={{ ...S.td, textAlign: 'right', color: res2 >= 0 ? '#52C278' : '#C85A4A', fontWeight: 500 }}>{fmt(res2)}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                      <div style={{ fontSize: 8, color: '#4A6048', lineHeight: 1.6, marginTop: 6 }}>El 70% es el KPI crítico: por debajo de ese umbral el modelo no es viable con precios de mayo 2026.</div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* Parámetros rendimiento (siempre visible en costos) */}
-              {finTab === 'costos' && (
-                <Section label="Parámetros" title="Rendimiento y escala">
-                  <InputRow label="Rinde al gancho (% peso vivo)" sub="Angus/Hereford bien terminado: 57–62%" value={v.rinde_gancho} onChange={val => set('rinde_gancho', val)} unit="%" result={Math.round(kgG) + ' kg/cab'} />
-                  <InputRow label="Rinde carnicero en desposte" sub="Sin hueso, sin grasa: 72–78%" value={v.rinde_carnicero} onChange={val => set('rinde_carnicero', val)} unit="%" result={Math.round(kgN) + ' kg netos'} />
-                  <InputRow label="Animales por semana" value={v.animales_semana} onChange={val => set('animales_semana', val)} unit="cab/sem" result={Math.round(kgNS) + ' kg/sem'} />
-                </Section>
-              )}
-            </div>
-
-            {/* RIGHT PANEL */}
-            <div style={S.finRight}>
-              <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 14, color: '#52C278', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #263028' }}>Tablero mayo 2026</div>
-              <div style={S.kpiGrid}>
-                <div style={{ ...S.kpi('green'), gridColumn: '1/-1' }}>
-                  <div style={S.kpiLabel('green')}>Kg netos / semana</div>
-                  <div style={{ ...S.kpiVal('green'), fontSize: 26 }}>{Math.round(kgNS)} kg</div>
-                  <div style={S.kpiSub}>{v.animales_semana} novillos · factor 0.435</div>
-                </div>
-                <div style={S.kpi('amber')}>
-                  <div style={S.kpiLabel('amber')}>Costo / sem</div>
-                  <div style={S.kpiVal('amber')}>{fmt(totS)}</div>
-                </div>
-                <div style={S.kpi('amber')}>
-                  <div style={S.kpiLabel('amber')}>Costo / kg</div>
-                  <div style={S.kpiVal('amber')}>{fmt(costoKg)}</div>
-                  <div style={S.kpiSub}>envasado entregado</div>
-                </div>
-              </div>
-
-              {/* Breakdown */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 6 }}>Descomposición costo/kg</div>
-                {[['Campo', b1kg, '#2E7D48'], ['Faena + log.', b2kg, '#8A6A18'], ['Operativo', b3kg, '#1A3A5C'], ['Comercial.', b4kg, '#8A2018']].map(([label, val, color]) => (
-                  <div key={label}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, padding: '3px 0', borderBottom: '1px solid #263028' }}>
-                      <span style={{ color: '#4A6048' }}>{label}</span>
-                      <span style={{ color: '#D0E4C8', fontWeight: 500 }}>{fmt(val)}/kg</span>
-                    </div>
-                    <div style={S.barTrack}><div style={S.bar(color, val / maxKg * 100)} /></div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Precio */}
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>Precio de venta promedio / kg</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#1A2218', border: '1px solid #334438', borderRadius: 4, padding: '6px 9px' }}>
-                  <span style={{ color: '#4A6048', fontSize: 10 }}>$</span>
-                  <input type="number" value={v.precio_venta} onChange={e => set('precio_venta', e.target.value)} style={{ background: 'transparent', border: 'none', fontFamily: "'Instrument Serif', serif", fontSize: 19, color: '#E8F2E0', width: '100%', outline: 'none', textAlign: 'right' }} />
-                  <span style={{ color: '#4A6048', fontSize: 10 }}>/kg</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#1A2218', borderRadius: 3, padding: '6px 10px', marginTop: 4 }}>
-                  <span style={{ fontSize: 9, color: '#4A6048' }}>Margen / kg</span>
-                  <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 15, color: margenKg >= 0 ? '#52C278' : '#C85A4A' }}>{fmt(margenKg)}/kg</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', background: '#1A2218', borderRadius: 3, padding: '6px 10px', marginTop: 3 }}>
-                  <span style={{ fontSize: 9, color: '#4A6048' }}>Margen %</span>
-                  <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 15, color: margenKg >= 0 ? '#52C278' : '#C85A4A' }}>{fmtPct(margenPct)}</span>
-                </div>
-              </div>
-
-              {/* Semana */}
-              <div style={{ background: '#141A16', border: '1px solid #263028', borderRadius: 4, padding: '10px 12px' }}>
-                <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 7 }}>Proyección semanal</div>
-                {[['Ingresos brutos', fmt(ingB)], ['Costos variables', fmt(cvS)], ['Costos fijos sem.', fmt(cfS)]].map(([label, val]) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, padding: '2px 0' }}>
-                    <span style={{ color: '#4A6048' }}>{label}</span><span style={{ color: '#D0E4C8' }}>{val}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, padding: '6px 0 2px', borderTop: '1px solid #263028', marginTop: 4 }}>
-                  <span style={{ color: '#849E80', fontWeight: 500 }}>Resultado semana</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: resSem >= 0 ? '#52C278' : '#C85A4A' }}>{fmt(resSem)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, padding: '2px 0' }}>
-                  <span style={{ color: '#849E80', fontWeight: 500 }}>Resultado mes</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: resMes >= 0 ? '#52C278' : '#C85A4A' }}>{fmt(resMes)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ══ MIX DE CORTES ══ */}
-      {mod === 'mix' && (
-        <>
-          <div style={S.strip}>
-            <SSItem label="Precio mix ponderado" val={fmt(mixPrecio) + '/kg'} color="#52C278" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Ingreso semanal" val={fmt(mixTotIng)} />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Margen bruto mix" val={fmt(mixMargen)} color={mixMargen >= 0 ? '#52C278' : '#C85A4A'} />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Resultado mensual" val={fmt(mixMes)} color={mixMes >= 0 ? '#52C278' : '#C85A4A'} />
-          </div>
-          <div style={S.panel}>
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Mix de cortes por res</div>
-            <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>Ajustá kg y precio D2C — el precio promedio ponderado se actualiza en tiempo real y se sincroniza con el tablero financiero</div>
-            <div style={S.auditBanner}>
-              <span style={{ fontSize: 18 }}>⚑</span>
-              <div>
-                <div style={{ fontSize: 11, color: '#C85A4A', fontWeight: 500, marginBottom: 3 }}>Punto ciego crítico — corregido en v2</div>
-                <div style={{ fontSize: 9, color: '#849E80', lineHeight: 1.7 }}>El modelo original usaba $12.000/kg sin desglosar cortes. Los precios al consumidor en mayo 2026 van de $10.381 (picada) a $24.000 (lomo). El mix real determina si el negocio es rentable: la diferencia entre vender mayoritariamente asado vs. cortes premium puede ser de $5.000–8.000/kg en el precio promedio ponderado.</div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
-              <div>
-                <table style={S.table}>
-                  <thead>
-                    <tr>
-                      <th style={S.th}>Corte</th>
-                      <th style={{ ...S.th, textAlign: 'right' }}>Kg/res</th>
-                      <th style={{ ...S.th, textAlign: 'right' }}>Precio D2C $/kg</th>
-                      <th style={{ ...S.th, textAlign: 'right' }}>Ingreso/sem</th>
-                      <th style={{ ...S.th, textAlign: 'right' }}>% total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {v.mix.map((c, i) => {
-                      const ing = c.kg * c.precio * v.animales_semana
-                      const pct = mixTotIng > 0 ? (ing / mixTotIng * 100) : 0
-                      return (
-                        <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : '#0A100A' }}>
-                          <td style={{ ...S.td, color: '#E8F2E0' }}>{c.nombre}</td>
-                          <td style={{ ...S.td, textAlign: 'right' }}>
-                            <input type="number" value={c.kg} onChange={e => setMixItem(i, 'kg', e.target.value)} style={{ ...S.input, width: 55, fontSize: 9 }} />
-                          </td>
-                          <td style={{ ...S.td, textAlign: 'right' }}>
-                            <input type="number" value={c.precio} onChange={e => setMixItem(i, 'precio', e.target.value)} style={{ ...S.input, width: 75, fontSize: 9 }} />
-                          </td>
-                          <td style={{ ...S.td, textAlign: 'right', color: '#52C278', fontWeight: 500 }}>{fmt(ing)}</td>
-                          <td style={{ ...S.td, textAlign: 'right', color: '#4A6048' }}>{pct.toFixed(1)}%</td>
-                        </tr>
-                      )
-                    })}
-                    <tr style={{ borderTop: '2px solid #334438' }}>
-                      <td style={{ ...S.td, color: '#E8F2E0', fontWeight: 500 }}>TOTAL / PROMEDIO</td>
-                      <td style={{ ...S.td, textAlign: 'right', color: '#52C278', fontWeight: 500 }}>{Math.round(mixTotKg)} kg</td>
-                      <td style={{ ...S.td, textAlign: 'center', color: '#D4A843', fontWeight: 500 }}>{fmt(mixPrecio)}/kg</td>
-                      <td style={{ ...S.td, textAlign: 'right', color: '#52C278', fontWeight: 500 }}>{fmt(mixTotIng)}</td>
-                      <td style={{ ...S.td, textAlign: 'right', color: '#4A6048' }}>100%</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div>
-                {[['Precio prom. ponderado', fmt(mixPrecio) + '/kg', 'green'], ['Ingreso semanal (3 reses)', fmt(mixTotIng), null], ['Margen bruto', fmt(mixMargen), mixMargen >= 0 ? 'green' : 'red'], ['Resultado mensual', fmt(mixMes), mixMes >= 0 ? 'green' : 'red']].map(([label, val, variant]) => (
-                  <div key={label} style={{ ...S.kpi(variant), marginBottom: 8 }}>
-                    <div style={S.kpiLabel(variant)}>{label}</div>
-                    <div style={S.kpiVal(variant)}>{val}</div>
-                  </div>
-                ))}
-                <div style={S.infoBox}>
-                  <div style={S.infoTitle}>Distribución por segmento</div>
-                  {(() => {
-                    const segs = { premium: { label: 'Cortes premium', ing: 0, color: '#2E7D48', idxs: [0,1,2,3,4,5] }, medio: { label: 'Cortes medios', ing: 0, color: '#8A6A18', idxs: [6,7,8] }, bajo: { label: 'Cortes económicos', ing: 0, color: '#8A2018', idxs: [9,10,11,12,13] } }
-                    v.mix.forEach((c, i) => {
-                      const ing = c.kg * c.precio * v.animales_semana
-                      if (i <= 5) segs.premium.ing += ing
-                      else if (i <= 8) segs.medio.ing += ing
-                      else segs.bajo.ing += ing
-                    })
-                    return Object.values(segs).map(s => (
-                      <div key={s.label} style={{ marginBottom: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 2 }}>
-                          <span style={{ color: '#849E80' }}>{s.label}</span>
-                          <span style={{ color: '#D0E4C8' }}>{mixTotIng > 0 ? ((s.ing / mixTotIng) * 100).toFixed(0) : 0}%</span>
-                        </div>
-                        <div style={S.barTrack}><div style={S.bar(s.color, mixTotIng > 0 ? s.ing / mixTotIng * 100 : 0)} /></div>
-                      </div>
-                    ))
-                  })()}
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ══ FLUJO DE CAJA ══ */}
-      {mod === 'caja' && (
-        <>
-          <div style={S.subnav}>
-            <SubNavBtn active={cajaTab === 'mensual'} onClick={() => setCajaTab('mensual')}>Flujo mensual (12 meses)</SubNavBtn>
-            <SubNavBtn active={cajaTab === 'capital'} onClick={() => setCajaTab('capital')}>Capital de trabajo</SubNavBtn>
-          </div>
-          <div style={S.strip}>
-            <SSItem label="Capital trabajo inicial" val={fmt(cfS * 4.33 * 3)} color="#D4A843" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Break-even" val={beMonth > 0 ? 'Mes ' + beMonth : '> 12 meses'} color={beMonth > 0 ? '#52C278' : '#C85A4A'} />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Inversión total" val={fmt(v.cj_inversion)} color="#C85A4A" />
-          </div>
-          <div style={S.panel}>
-            {cajaTab === 'mensual' && (
-              <>
-                <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 16, color: '#E8F2E0', marginBottom: 2 }}>Flujo de caja — Primeros 12 meses</div>
-                <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>Módulo nuevo — punto ciego crítico identificado en auditoría</div>
-                <div style={S.auditBanner}>
-                  <span style={{ fontSize: 18 }}>⚑</span>
-                  <div style={S.infoBody}>El modelo v1 mostraba resultado semanal pero no el flujo en el tiempo. Los primeros 3 meses son críticos: la habilitación SENASA tarda, la demanda arranca baja y los costos fijos son inmediatos desde el día 1.</div>
-                </div>
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-                  {[['Inversión inicial', 'cj_inversion', '$'], ['% ventas mes 1', 'cj_ramp1', '%'], ['% ventas mes 2–3', 'cj_ramp2', '%'], ['% ventas mes 4–6', 'cj_ramp3', '%'], ['% ventas mes 7–12', 'cj_ramp4', '%']].map(([label, key, unit]) => (
-                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#141A16', border: '1px solid #334438', borderRadius: 3, padding: '4px 8px' }}>
-                        <input type="number" value={v[key]} onChange={e => set(key, e.target.value)} style={{ background: 'none', border: 'none', color: '#E8F2E0', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, width: 80, outline: 'none', textAlign: 'right' }} />
-                        <span style={{ color: '#4A6048', fontSize: 9 }}>{unit}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <table style={S.table}>
-                  <thead>
-                    <tr>
-                      {['Mes', '% Ventas', 'Kg vendidos', 'Ingresos', 'Costos var.', 'Costos fijos', 'Resultado', 'Acumulado'].map(h => <th key={h} style={S.th}>{h}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cajaRows.map(({ mes, pct, ing, cv2, res, acum: ac }, i) => (
-                      <tr key={i} style={{ background: ac >= 0 ? 'rgba(46,125,72,.06)' : i % 2 === 0 ? 'transparent' : '#0A100A' }}>
-                        <td style={{ ...S.td, color: '#E8F2E0' }}>{mes}</td>
-                        <td style={{ ...S.td, textAlign: 'right', color: pct >= 80 ? '#52C278' : '#D4A843' }}>{pct}%</td>
-                        <td style={{ ...S.td, textAlign: 'right' }}>{Math.round(kgNS * (pct / 100) * 4.33)} kg</td>
-                        <td style={{ ...S.td, textAlign: 'right' }}>{fmt(ing)}</td>
-                        <td style={{ ...S.td, textAlign: 'right' }}>{fmt(cv2)}</td>
-                        <td style={{ ...S.td, textAlign: 'right' }}>{fmt(costoFijM)}</td>
-                        <td style={{ ...S.td, textAlign: 'right', color: res >= 0 ? '#52C278' : '#C85A4A', fontWeight: 500 }}>{fmt(res)}</td>
-                        <td style={{ ...S.td, textAlign: 'right', color: ac >= 0 ? '#52C278' : '#C85A4A', fontWeight: 500 }}>{fmt(ac)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-            {cajaTab === 'capital' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div style={S.infoBox}>
-                  <div style={S.infoTitle}>Inversión inicial requerida</div>
-                  <table style={S.table}>
-                    <thead><tr><th style={S.th}>Componente</th><th style={{ ...S.th, textAlign: 'right' }}>Estimación</th></tr></thead>
-                    <tbody>
-                      {[['Cámara frigorífica (usada)', '$6M–8M'], ['Envasadora al vacío doble cámara', '$1.5M–2.5M'], ['Sierra + mesa acero inox.', '$800k–1.2M'], ['Balanza + impresora etiquetas', '$600k–900k'], ['Bolsas isotérmicas + delivery', '$400k–600k'], ['Adecuación edilicia SENASA', '$2M–5M'], ['Habilitación + tramitación', '$500k–1M'], ['Capital de trabajo (3 meses)', '$8M–12M']].map(([label, val]) => (
-                        <tr key={label}><td style={S.td}>{label}</td><td style={{ ...S.td, textAlign: 'right', color: '#D4A843', fontWeight: 500 }}>{val}</td></tr>
-                      ))}
-                      <tr style={{ borderTop: '2px solid #334438' }}><td style={{ ...S.td, color: '#E8F2E0', fontWeight: 500 }}>TOTAL ESTIMADO</td><td style={{ ...S.td, textAlign: 'right', color: '#C85A4A', fontWeight: 500 }}>$20M–31M</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div style={S.infoBox}>
-                  <div style={S.infoTitle}>⚑ Puntos ciegos de liquidez</div>
-                  <div style={S.infoBody}>
-                    <strong style={{ color: '#E8F2E0' }}>1. Ciclo productivo propio:</strong> un ternero nacido en oct del año N no genera ingreso hasta sep del año N+2. Son 23 meses de capital inmovilizado.<br /><br />
-                    <strong style={{ color: '#E8F2E0' }}>2. IVA diferencial:</strong> en monotributo se pierde el 10.5% sobre ventas (~$400.000/semana). En RI puede ser favorable. Decisión impositiva crítica.<br /><br />
-                    <strong style={{ color: '#E8F2E0' }}>3. Habilitación SENASA:</strong> 3–8 meses de proceso. Los costos fijos del local corren desde el primer día sin ingresos operativos.<br /><br />
-                    <strong style={{ color: '#E8F2E0' }}>4. Primer año 100% compras:</strong> los propios no completan el ciclo hasta el año N+2. El costo del año 1 es el más alto.
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* ══ CINTA PRODUCTIVA ══ */}
-      {mod === 'prod' && (
-        <>
-          <div style={S.subnav}>
-            {[['gantt','Flujo anual'],['compras','Política compras'],['inquilino','Inquilino'],['supl','Suplementación']].map(([id, label]) => (
-              <SubNavBtn key={id} active={prodTab === id} onClick={() => setProdTab(id)}>{label}</SubNavBtn>
-            ))}
-          </div>
-          <div style={S.strip}>
-            <SSItem label="Vacas madre" val="100" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Destete 77%" val="77 terneros/año" color="#52C278" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Compras necesarias" val="67 terneros/año" color="#D4A843" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Ciclo total propio" val="27–28 meses" color="#D4A843" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Faena continua" val="3/sem · 12/mes" color="#52C278" />
-          </div>
-          <div style={S.panel}>
-            {prodTab === 'gantt' && (
-              <>
-                <div style={{ background: '#0E1828', border: '1px solid #1A3A5C', borderRadius: 5, padding: '10px 14px', marginBottom: 14, fontSize: 9, color: '#849E80', lineHeight: 1.8 }}>
-                  <strong style={{ color: '#5A9ABF' }}>✓ Gestación 9 meses correctamente modelada:</strong> Servicio ene–abr → gestación 9 meses → <strong style={{ color: '#E8F2E0' }}>parición oct–ene</strong> → destete 7 meses → <strong style={{ color: '#E8F2E0' }}>destete may–ago</strong> → recría 10–11 meses → <strong style={{ color: '#E8F2E0' }}>350 kg en mar–jul año N+2</strong> → feedlot 100 días → faena. Ciclo total: <strong style={{ color: '#D4A843' }}>27–28 meses por animal propio</strong>.
-                </div>
-                <GanttSection />
-                <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 14, color: '#E8F2E0', marginBottom: 3, marginTop: 20 }}>Flujo mensual — Estado estacionario (año N+2 en adelante)</div>
-                <table style={S.table}>
-                  <thead><tr>{['Mes','Propios al feedlot','Compras necesarias','Total feedlot','Origen faena','Estado margen'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {[['Ene–Feb','0','12/mes','12','100% comprados','Costo máximo','amber'],['Mar–Abr','8–12','0–4','12','Mix (cabeza parición)','Propios empiezan','green'],['May–Jun','15–20','0','12','100% propios','★ Mejor margen','green'],['Jul–Sep','10–15','0–2','12','Mayoría propios','Margen alto','green'],['Oct–Nov','3–5','7–9','12','Mix','Compras parcial','amber'],['Dic','0','12','12','100% comprados','Margen bajo','amber']].map(([mes, propios, compras, feedlot, origen, estado, color]) => (
-                      <tr key={mes}>
-                        <td style={{ ...S.td, color: '#E8F2E0' }}>{mes}</td>
-                        <td style={{ ...S.td, textAlign: 'right', color: '#52C278' }}>{propios}</td>
-                        <td style={{ ...S.td, textAlign: 'right', color: '#D4A843' }}>{compras}</td>
-                        <td style={{ ...S.td, textAlign: 'right', color: '#E8F2E0', fontWeight: 500 }}>{feedlot}</td>
-                        <td style={S.td}>{origen}</td>
-                        <td style={{ ...S.td, color: color === 'green' ? '#52C278' : '#D4A843', fontSize: 8 }}>{estado}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-            {prodTab === 'compras' && <ComprasSection vals={v} />}
-            {prodTab === 'inquilino' && <InquilinoSection vals={v} set={set} inqIngM={inqIngM} inqIngA={inqIngA} inqTerneros={inqTerneros} inqRed={inqRed} />}
-            {prodTab === 'supl' && <SuplSection vals={v} set={set} sCostoA={sCostoA} sKgEx={sKgEx} sValEx={sValEx} sRes={sRes} sCostoKg={sCostoKg} sDiasAh={sDiasAh} />}
-          </div>
-        </>
-      )}
-
-      {/* ══ AUDITORÍA ══ */}
-      {mod === 'audit' && (
-        <>
-          <div style={S.subnav}>
-            {[['riesgos','Riesgos operativos'],['precios','Precios reales may-26'],['checklist','Checklist ejecutivo']].map(([id, label]) => (
-              <SubNavBtn key={id} active={auditTab === id} onClick={() => setAuditTab(id)} audit>{label}</SubNavBtn>
-            ))}
-          </div>
-          <div style={S.strip}>
-            <SSItem label="Riesgos críticos" val="4" color="#C85A4A" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Riesgos medios" val="5" color="#D4A843" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Mejoras incorporadas" val="7" color="#52C278" />
-            <div style={{ width: 1, height: 28, background: '#334438' }} />
-            <SSItem label="Viabilidad mayo 2026" val="Confirmada" color="#52C278" />
-          </div>
-          <div style={S.panel}>
-            {auditTab === 'riesgos' && <AuditRiesgos />}
-            {auditTab === 'precios' && <AuditPrecios />}
-            {auditTab === 'checklist' && <AuditChecklist />}
-          </div>
-        </>
-      )}
-
-      <footer style={{ borderTop: '1px solid #263028', padding: '10px 24px', fontSize: 8, color: '#4A6048', textAlign: 'center', letterSpacing: '.06em' }}>
-        Plataforma D2C Carne Premium v2.0 · Precios actualizados mayo 2026 · CACG / MAGYP / IPCVA · Sol de Julio → Río Cuarto · Sincronizado con Firestore
-      </footer>
+    <div style={{display:'flex',alignItems:'center',gap:5,padding:'0 8px'}}>
+      <input type="number" value={value} onChange={e=>onChange(e.target.value)} disabled={pinned} style={{width:'100%',background:pinned?C.surface2:C.surface,border:`1px solid ${pinned?C.indigo:C.border2}`,borderRadius:7,padding:'5px 8px',fontFamily:"'DM Mono',monospace",fontSize:12,color:pinned?C.indigo:C.text,textAlign:'right',outline:'none',cursor:pinned?'not-allowed':'text'}}/>
+      <span style={{fontSize:10,color:C.text3,whiteSpace:'nowrap',minWidth:26}}>{unit}</span>
     </div>
-  )
+    <div style={{textAlign:'right',fontSize:12,color:resultColor||C.text2,fontFamily:"'DM Mono',monospace",fontWeight:500,paddingRight:8}}>{result}</div>
+    {onPin?<PinBtn pinned={pinned} onPin={onPin}/>:<div/>}
+  </div>
 }
 
-// ─── SUB-COMPONENTS ─────────────────────────────────────────────
-function SSItem({ label, val, color }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-      <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.1em' }}>{label}</div>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: color || '#E8F2E0', lineHeight: 1 }}>{val}</div>
+function Bar({label,value,max,color}){
+  const pct=max>0?Math.min(100,(value/max)*100):0
+  return <div style={{marginBottom:9}}>
+    <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+      <span style={{color:C.text2}}>{label}</span>
+      <span style={{fontFamily:"'DM Mono',monospace",color:C.text,fontWeight:500}}>{fmt(value)}/kg</span>
     </div>
-  )
+    <div style={{height:6,background:C.surface2,borderRadius:3,overflow:'hidden'}}>
+      <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3,transition:'width .4s'}}/>
+    </div>
+  </div>
 }
 
-function GanttRow({ label, sub, cells }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '145px repeat(12, 58px)', gap: 0, marginBottom: 2, alignItems: 'center' }}>
-      <div style={{ fontSize: 8, color: '#849E80', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {label}<br /><span style={{ fontSize: 7, color: '#4A6048' }}>{sub}</span>
+function SI({label,value,variant}){
+  const c={green:C.green,amber:C.amber,red:C.red,default:C.text}[variant]||C.text
+  return <div>
+    <div style={{fontSize:9,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:2}}>{label}</div>
+    <div style={{fontFamily:"'Fraunces',serif",fontSize:18,color:c,fontWeight:600,lineHeight:1}}>{value}</div>
+  </div>
+}
+const Div=()=><div style={{width:1,height:30,background:C.border}}/>
+
+// ── MAIN ──────────────────────────────────────────────────────
+export default function App(){
+  const [mod,setMod]=useState('fin')
+  const [finTab,setFinTab]=useState('costos')
+  const [prodTab,setProdTab]=useState('gantt')
+  const [auditTab,setAuditTab]=useState('riesgos')
+  const [cajaTab,setCajaTab]=useState('mensual')
+  const [saveStatus,setSaveStatus]=useState('cargando...')
+  const [savedAnim,setSavedAnim]=useState(false)
+  const [vals,setVals]=useState(DEFAULTS)
+  const debRef=useRef(null)
+
+  useEffect(()=>{
+    getDoc(DOC_REF).then(snap=>{
+      if(snap.exists()){const d=snap.data();setVals(p=>({...p,...d,mix:d.mix||p.mix,pinned:d.pinned||{}}));setSaveStatus('sincronizado')}
+      else setSaveStatus('nuevo')
+    }).catch(()=>setSaveStatus('sin conexión'))
+  },[])
+
+  const handleSave=useCallback(()=>{
+    setDoc(DOC_REF,vals,{merge:true}).then(()=>{setSavedAnim(true);setSaveStatus('guardado');setTimeout(()=>setSavedAnim(false),2000)}).catch(()=>setSaveStatus('error'))
+  },[vals])
+
+  const autoSave=useCallback((nv)=>{
+    if(debRef.current)clearTimeout(debRef.current)
+    setSaveStatus('editando...')
+    debRef.current=setTimeout(()=>{setDoc(DOC_REF,nv,{merge:true}).then(()=>setSaveStatus('auto-guardado ✓')).catch(()=>setSaveStatus('error'))},1500)
+  },[])
+
+  const set=useCallback((key,val)=>{
+    setVals(p=>{if(p.pinned?.[key])return p;const n={...p,[key]:parseFloat(val)||0};autoSave(n);return n})
+  },[autoSave])
+
+  const togglePin=useCallback((key)=>{
+    setVals(p=>{const pinned={...(p.pinned||{})};if(pinned[key])delete pinned[key];else pinned[key]=p[key];const n={...p,pinned};autoSave(n);return n})
+  },[autoSave])
+
+  const setMix=useCallback((i,field,val)=>{
+    setVals(p=>{const m=p.mix.map((c,idx)=>idx===i?{...c,[field]:parseFloat(val)||0}:c);const n={...p,mix:m};autoSave(n);return n})
+  },[autoSave])
+
+  const resetAll=useCallback(()=>{
+    if(!window.confirm('¿Restablecer todos los valores a los defaults de mayo 2026?'))return
+    const n={...DEFAULTS,pinned:{}};setVals(n);setDoc(DOC_REF,n,{merge:true}).then(()=>setSaveStatus('restablecido'))
+  },[])
+
+  const v=vals
+  const pin=k=>!!(v.pinned?.[k])
+
+  // Calculations
+  const kgG=v.peso_vivo*(v.rinde_gancho/100)
+  const kgN=kgG*(v.rinde_carnicero/100)
+  const kgNS=kgN*v.animales_semana
+  const b1=v.b1_ternero+v.b1_supl+v.b1_racion+v.b1_sanidad+v.b1_personal
+  const b1S=b1*v.animales_semana
+  const b2r=v.b2_flete1+v.b2_faena+v.b2_flete2+v.b2_guias+v.b2_iibb+v.b2_contingencia-v.b2_recupero
+  const b2S=b2r*v.animales_semana
+  const b3m=v.b3_alquiler+v.b3_luz+v.b3_sueldo1+v.b3_sueldo2+v.b3_insumos+v.b3_amort+v.b3_mant+v.b3_seguros+v.b3_obra
+  const b3S=b3m/4.33
+  const mktS=(v.b4_mkt+v.b4_web+v.b4_ventas)/4.33
+  const packS=v.b4_pack*v.b4_pedidos
+  const delS=v.b4_delivery*v.b4_pedidos
+  const ingB=v.precio_venta*kgNS
+  const mpS=ingB*(v.b4_mp/100)
+  const b4S=packS+delS+mktS+mpS
+  const cvS=(b1+b2r)*v.animales_semana
+  const cfS=b3S+mktS+packS+delS
+  const totS=cvS+cfS+mpS
+  const costoKg=kgNS>0?totS/kgNS:0
+  const margenKg=v.precio_venta-costoKg
+  const margenPct=v.precio_venta>0?(margenKg/v.precio_venta)*100:0
+  const resSem=ingB-totS, resMes=resSem*4.33
+  const b1kg=kgNS>0?b1S/kgNS:0, b2kg=kgNS>0?b2S/kgNS:0
+  const b3kg=kgNS>0?b3S/kgNS:0, b4kg=kgNS>0?b4S/kgNS:0
+  const maxKg=Math.max(b1kg,b2kg,b3kg,b4kg,1)
+  const mixTotKg=v.mix.reduce((a,c)=>a+c.kg,0)
+  const mixTotIng=v.mix.reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0)
+  const mixPrecio=mixTotKg>0?mixTotIng/mixTotKg/v.animales_semana:0
+  const sDias=v.s_meses*30, sCostoA=v.s_dia*sDias
+  const sKgEx=(v.s_gdp-v.s_gdpsin)*sDias, sValEx=sKgEx*v.s_pnov
+  const sRes=sValEx+(v.s_gdpsin>0?sKgEx/v.s_gdpsin:0)*80-sCostoA
+  const inqIngA=v.inq_animales*v.inq_kg*v.inq_precio*v.inq_meses
+  const inqT=Math.round(inqIngA/(200*v.inq_precio_t))
+  const rampMap=m=>m<=1?v.cj_ramp1:m<=3?v.cj_ramp2:m<=6?v.cj_ramp3:v.cj_ramp4
+  const ingMF=ingB*4.33, costoVM=cvS*4.33, costoFM=cfS*4.33+mpS*4.33
+  let acum=-v.cj_inversion, beMonth=-1
+  const cajaRows=MESES.map((mes,i)=>{const pct=rampMap(i+1);const ing=ingMF*(pct/100);const cv2=costoVM*(pct/100);const res=ing-cv2-costoFM;acum+=res;if(acum>=0&&beMonth<0)beMonth=i+1;return{mes,pct,ing,cv2,res,acum}})
+  const mv=margenPct>=30?'green':margenPct>=15?'amber':'red'
+  const rv=resMes>=0?'green':'red'
+
+  const IR=(label,key,unit,sub,upd)=><IRow key={key} label={label} sub={sub} value={v[key]} onChange={val=>set(key,val)} unit={unit} result={fmt(v[key])} updated={upd} pinned={pin(key)} onPin={()=>togglePin(key)}/>
+
+  const totalRow=(label,val)=><div style={{padding:'10px 20px',background:C.amberBg,display:'grid',gridTemplateColumns:'1fr 160px 105px 36px',alignItems:'center'}}>
+    <div style={{fontSize:11,fontWeight:700,color:'#92400E'}}>{label}</div>
+    <div/><div style={{textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:14,color:'#92400E',fontWeight:700,paddingRight:8}}>{fmt(val)}</div><div/>
+  </div>
+
+  return <div style={{background:C.bg,minHeight:'100vh'}}>
+    <style>{GS}</style>
+
+    {/* HEADER */}
+    <div style={{background:C.navy,padding:'0 24px',display:'flex',alignItems:'center',justifyContent:'space-between',height:54,boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <span style={{fontFamily:"'Fraunces',serif",fontSize:18,color:'#FFF',fontWeight:600}}>🥩 D2C Carne Premium</span>
+        <span style={{fontSize:11,color:'#93C5FD',opacity:.8}}>Sol de Julio → Río Cuarto · Mayo 2026</span>
       </div>
-      {cells.map((cell, i) => (
-        <div key={i} style={{ borderLeft: '1px solid #263028', height: 18, padding: '0 1px', display: 'flex', alignItems: 'center' }}>
-          {cell && <div style={{ height: 11, borderRadius: 2, fontSize: 7, display: 'flex', alignItems: 'center', padding: '0 3px', width: '100%', background: cell.bg || '#2E7D48', color: 'rgba(255,255,255,.85)', fontWeight: 500, overflow: 'hidden', whiteSpace: 'nowrap' }}>{cell.label || ''}</div>}
-        </div>
+      <div style={{display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontSize:10,color:'#93C5FD',fontFamily:"'DM Mono',monospace"}}>{saveStatus}</span>
+        <SaveBtn onSave={handleSave} saved={savedAnim}/>
+        <button onClick={resetAll} style={{padding:'7px 14px',fontSize:11,fontWeight:500,cursor:'pointer',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,background:'transparent',color:'#CBD5E1',fontFamily:"'DM Sans',sans-serif"}}>↺ Restablecer</button>
+      </div>
+    </div>
+
+    {/* NAV */}
+    <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'8px 24px',display:'flex',gap:4,flexWrap:'wrap',boxShadow:sh}}>
+      {[['fin','◎','Financiero'],['mix','⊞','Mix de Cortes'],['caja','📊','Flujo de Caja'],['prod','🐄','Cinta Productiva'],['audit','⚑','Auditoría']].map(([id,icon,label])=>(
+        <NavBtn key={id} active={mod===id} onClick={()=>setMod(id)} icon={icon} label={label}/>
       ))}
     </div>
-  )
-}
 
-const G = { serv: '#1A4A8A', gest: '#2A3A6A', dest: '#2D6A48', destC: '#2D8050', rec: '#3A6A2A', supl: '#5A4A10', feed: '#2D5A6A', faen: '#2E7D48', comp: '#8A6A18' }
-const empty = Array(12).fill(null)
-const row = (label, sub, cells) => ({ label, sub, cells })
-const c = (bg, label = '') => ({ bg, label })
-
-function GanttSection() {
-  const hdrStyle = { display: 'grid', gridTemplateColumns: '145px repeat(12, 58px)', gap: 0, marginBottom: 1 }
-  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
-  const divStyle = { gridColumn: '1/-1', height: 1, background: '#263028', margin: '5px 0', display: 'grid', gridTemplateColumns: '145px repeat(12, 58px)' }
-
-  const rows1 = [
-    row('Servicio IATF + repaso', '100 vacas entoradas', [c(G.serv,'IATF'),c(G.serv,'repaso'),c(G.serv),c(G.serv,'cierre'),...empty.slice(4)]),
-    row('Gestación (9 meses)', 'Preñez verificada may–jun', [c(G.gest,'→'),c(G.gest),c(G.gest),c(G.gest,'repaso'),c(G.gest,'diag.'),c(G.gest),c(G.gest),c(G.gest),c(G.gest,'prepar.'),c(G.dest,'par.cab'),c(G.destC,'par.cpo'),c(G.dest,'par.cpo')]),
-    row('Parición completa', 'oct–ene · 77 terneros · 77%', [...empty.slice(0,9),c(G.dest,'19t cab'),c(G.destC,'39t cpo'),c(G.dest,'cpo/cola')]),
-    row('Compras ext. año N', '67 t · destete 180–220 kg', [c(G.comp,'15t'),null,c(G.comp,'12t'),null,null,null,c(G.comp,'5t'),null,c(G.comp,'8t'),c(G.comp,'7t'),c(G.comp,'12t'),c(G.comp,'8t')]),
-  ]
-  const rows2 = [
-    row('Cola parición (19t)', 'dic–ene · viene del año N', [c(G.dest,'19t cola'),...empty.slice(1)]),
-    row('Destete propios', 'may–ago · 7 meses post-parición', [...empty.slice(0,4),c(G.dest,'19t cab'),c(G.destC,'39t cpo'),c(G.destC,'cpo'),c(G.dest,'19t cola'),...empty.slice(8)]),
-    row('Recría cabeza (19t)', 'may N+1 → mar/abr N+2 · supl may–nov', [...empty.slice(0,4),c(G.rec,'inicio'),c(G.supl),c(G.supl),c(G.supl),c(G.supl),c(G.supl),c(G.supl,'fin'),c(G.rec,'recría→')]),
-    row('Recría cuerpo (39t)', 'jun–jul N+1 → abr–may N+2 · supl', [...empty.slice(0,5),c(G.supl,'inicio'),c(G.supl),c(G.supl),c(G.supl),c(G.supl),c(G.supl,'fin'),c(G.rec,'recría→')]),
-    row('Recría cola (19t)', 'ago N+1 → jun N+2 · supl', [...empty.slice(0,7),c(G.supl,'inicio'),c(G.supl),c(G.supl),c(G.supl,'fin'),c(G.rec,'recría→')]),
-    row('Recría compras ene–mar N', '→ 350 kg en oct–dic N+1', [...empty.slice(0,4),c(G.rec,'recría'),c(G.supl),c(G.supl),c(G.supl),c(G.supl),c(G.supl,'fin'),c(G.feed,'→feed'),c(G.feed)]),
-    row('Recría compras may–sep N', '→ 350 kg en mar–jul N+1', [c(G.rec,'recría'),c(G.rec),c(G.feed,'→feed'),c(G.feed),c(G.feed),c(G.faen,'faena'),c(G.feed,'→feed'),c(G.feed),c(G.feed),c(G.faen,'faena'),c(G.feed,'→feed'),c(G.feed)]),
-    row('✓ Faena D2C continua', '3 novillos/semana', meses.map(() => c(G.faen, '3/sem'))),
-  ]
-
-  return (
-    <div style={{ overflowX: 'auto', marginBottom: 16 }}>
-      <div style={{ minWidth: 850 }}>
-        <div style={{ fontSize: 8, color: '#52C278', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>── Año N · Servicio, gestación y parición ──</div>
-        <div style={hdrStyle}>
-          <div style={{ fontSize: 7, color: '#4A6048' }}>Categoría</div>
-          {meses.map((m, i) => <div key={m} style={{ fontSize: 8, color: [9,10,11].includes(i) ? '#D4A843' : '#4A6048', textAlign: 'center', padding: '4px 1px', borderLeft: '1px solid #263028', background: [9,10,11].includes(i) ? '#221A08' : 'transparent' }}>{m}</div>)}
-        </div>
-        {rows1.map((r, i) => <GanttRow key={i} {...r} />)}
-        <div style={{ marginTop: 12, fontSize: 8, color: '#52C278', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 4 }}>── Año N+1 · Destete, recría, feedlot y faena (estado estacionario) ──</div>
-        <div style={hdrStyle}>
-          <div style={{ fontSize: 7, color: '#4A6048' }}>Categoría</div>
-          {meses.map((m, i) => <div key={m} style={{ fontSize: 8, color: i === 0 ? '#D4A843' : '#4A6048', textAlign: 'center', padding: '4px 1px', borderLeft: '1px solid #263028', background: i === 0 ? '#221A08' : 'transparent' }}>{m}</div>)}
-        </div>
-        {rows2.map((r, i) => <GanttRow key={i} {...r} />)}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-          {[['#1A4A8A','Servicio IATF'],['#2A3A6A','Gestación'],['#2D6A48','Parición/destete'],['#3A6A2A','Recría pastoril'],['#5A4A10','Recría + suplementación'],['#2D5A6A','Feedlot 100 días'],['#8A6A18','Compras externas'],['#2E7D48','Faena D2C']].map(([color, label]) => (
-            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, color: '#4A6048' }}>
-              <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />{label}
-            </div>
+    {/* ══ FINANCIERO ══ */}
+    {mod==='fin'&&<>
+      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+        <SI label="Kg netos/sem" value={Math.round(kgNS)+' kg'} variant="green"/>
+        <Div/><SI label="Costo/kg" value={fmt(costoKg)} variant="amber"/>
+        <Div/><SI label="Precio venta/kg" value={fmt(v.precio_venta)}/>
+        <Div/><SI label="Margen bruto" value={fmtPct(margenPct)} variant={mv}/>
+        <Div/><SI label="Resultado/mes" value={fmt(resMes)} variant={rv}/>
+        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+          {[['costos','Campo'],['faena','Faena'],['local','Local'],['comercial','Comercial'],['resumen','Resultado']].map(([id,label])=>(
+            <Tab key={id} active={finTab===id} onClick={()=>setFinTab(id)} label={label}/>
           ))}
         </div>
       </div>
-    </div>
-  )
-}
 
-function ComprasSection() {
-  const cards = [
-    { title: 'Ventana ene–mar (27 animales)', sub: 'Mejor precio relativo del año', rows: [['Precio estimado','$6.200–6.800/kg vivo','warn'],['Costo por animal','$1.240.000–1.360.000','warn'],['Suplementación adicional','$105.000/cab (7 meses)','bad'],['Costo total campo','~$1.852.000/cab','bad'],['Riesgo','Bajo — control total','good']] },
-    { title: 'Evitar agosto ⚑', sub: 'Pico estacional garantizado', rows: [['Precio estimado agosto','$7.200–8.000/kg vivo','bad'],['Sobrecosto vs. enero','+$120.000–280.000/cab','bad'],['Causa','Todos los invernadores comprando','bad'],['Alternativa','Esperar 30 días → septiembre','good']] },
-    { title: 'Opción sep (recriados 310 kg)', sub: 'Sin suplementación · directo feedlot', rows: [['Precio estimado','~$1.581.000–1.674.000/cab','warn'],['Sin suplementación','Ahorro $105.000/cab','good'],['Costo total campo','~$1.784.000/cab','good'],['Ventaja vs. ternero','$68.000 menos por animal','good']] },
-    { title: 'Regla de decisión', sub: 'Con precios mayo 2026', rows: [['Precio ternero < $6.800/kg','Comprar ternero + recría','good'],['Precio ternero > $7.200/kg','Evaluar recriado de sep.','warn'],['Precio ternero > $8.000/kg','Esperar o reducir compras','bad'],['Nunca en agosto','Precio pico estacional','bad']] },
-  ]
-  const colorMap = { good: '#52C278', warn: '#D4A843', bad: '#C85A4A' }
-  return (
-    <>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Política de compras externas</div>
-      <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>67 terneros/año · precio real ternero destete: $6.580/kg prom (CACG abr-2026)</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {cards.map(card => (
-          <div key={card.title} style={{ background: '#141A16', border: '1px solid #263028', borderRadius: 4, padding: 14 }}>
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 13, color: '#E8F2E0', marginBottom: 2 }}>{card.title}</div>
-            <div style={{ fontSize: 8, color: '#4A6048', marginBottom: 10, letterSpacing: '.05em' }}>{card.sub}</div>
-            {card.rows.map(([label, val, variant]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #263028', fontSize: 9 }}>
-                <span style={{ color: '#4A6048' }}>{label}</span>
-                <span style={{ color: colorMap[variant], fontWeight: 500 }}>{val}</span>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 330px',minHeight:'calc(100vh - 172px)'}}>
+        <div style={{padding:'20px 24px',overflowY:'auto'}}>
+
+          {/* Rendimiento */}
+          <div style={{background:'#FFFBEB',border:`1px solid ${C.amberBorder}`,borderRadius:14,padding:18,marginBottom:20,boxShadow:sh}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.amber,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:12}}>Cadena de rendimiento · Factor compuesto 0.435</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr auto 1fr',gap:10,alignItems:'center'}}>
+              {[['Peso vivo',Math.round(v.peso_vivo)+' kg'],null,['Media res',Math.round(kgG)+' kg'],null,['Carne neta',Math.round(kgN)+' kg']].map((item,i)=>
+                item?<div key={i} style={{background:C.surface,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:'10px 14px',textAlign:'center',boxShadow:sh}}>
+                  <div style={{fontSize:10,color:C.text3,marginBottom:3}}>{item[0]}</div>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:24,color:C.amber,fontWeight:600,lineHeight:1}}>{item[1]}</div>
+                  <div style={{fontSize:10,color:C.text3,marginTop:2}}>por animal</div>
+                </div>:<div key={i} style={{textAlign:'center',fontSize:11,color:C.amber,lineHeight:1.5}}>{i===1?'× 58%\ngancho\n→':'× 75%\ncarn.\n→'}</div>
+              )}
+            </div>
+            <div style={{marginTop:12,fontSize:11,color:'#92400E',background:'#FEF3C7',borderRadius:8,padding:'8px 12px'}}>
+              💡 Con valores actuales: <strong style={{fontFamily:"'DM Mono',monospace"}}>{fmt(b1)} ÷ {Math.round(kgN)} kg netos = <span style={{color:C.red}}>{fmt(kgN>0?b1/kgN:0)}/kg</span> solo de campo</strong>
+            </div>
+          </div>
+
+          {finTab==='costos'&&<>
+            <Card title="Costo de producción en campo" badge="Bloque 1" badgeColor="amber">
+              {IR('Ternero de destete (180–200 kg)','b1_ternero','$/cab','CACG abr-2026: $6.580/kg prom → 200 kg = $1.316.000',true)}
+              {IR('Suplementación invernal (210 días × $500/día)','b1_supl','$/cab','Mayo–noviembre · 7 meses confirmados',true)}
+              {IR('Ración feedlot 100 días','b1_racion','$/cab','10–12 kg/día × $350/kg ración maíz/expeler',true)}
+              {IR('Sanidad integral (vacunas, antiparas., veterinario)','b1_sanidad','$/cab',null,true)}
+              {IR('Personal campo + infraestructura (prorrateado)','b1_personal','$/cab',null,true)}
+              {totalRow('TOTAL BLOQUE 1 / semana',b1S)}
+            </Card>
+            <Card title="Rendimiento y escala" badge="Parámetros" badgeColor="blue">
+              {IR('Rinde al gancho (% peso vivo)','rinde_gancho','%','Angus/Hereford bien terminado: 57–62%',false)}
+              {IR('Rinde carnicero en desposte','rinde_carnicero','%','Sin hueso, sin grasa: 72–78%',false)}
+              {IR('Peso vivo objetivo','peso_vivo','kg/cab',null,false)}
+              {IR('Animales por semana','animales_semana','cab/sem',null,false)}
+            </Card>
+          </>}
+
+          {finTab==='faena'&&<Card title="Faena y logística" badge="Bloque 2" badgeColor="amber">
+            {IR('Flete campo → frigorífico origen (~180 km)','b2_flete1','$/cab','Vehículo propio o contratado',true)}
+            {IR('Faena maquila (SENASA + pesaje + cámara 48h)','b2_faena','$/cab','Frigorífico norte de Córdoba o Frías',true)}
+            {IR('Flete refrigerado → Río Cuarto (~500 km compartido)','b2_flete2','$/cab','Camión frío, carga compartida',true)}
+            {IR('Guías, DT electrónico, certificados SENASA','b2_guias','$/cab',null,true)}
+            <IRow label="Recupero menudencias (DESCUENTA el costo)" sub="Hígado, riñón, lengua, mondongo" value={v.b2_recupero} onChange={val=>set('b2_recupero',val)} unit="$/cab" result={'−'+fmt(v.b2_recupero)} resultColor={C.green} pinned={pin('b2_recupero')} onPin={()=>togglePin('b2_recupero')}/>
+            {IR('IIBB + impuestos sobre faena','b2_iibb','$/cab',null,true)}
+            {IR('Reserva contingencia DFD / pérdida de lote','b2_contingencia','$/cab','⚠ Nuevo — 1 animal con corte oscuro cada ~8 semanas',true)}
+            {totalRow('TOTAL BLOQUE 2 / semana',b2S)}
+          </Card>}
+
+          {finTab==='local'&&<Card title="Costo operativo — Centro Río Cuarto" badge="Bloque 3" badgeColor="amber">
+            {[['Alquiler del local','b3_alquiler','$/mes','Centro de procesamiento + pick-up',true],
+              ['Electricidad (cámara + envasadora + iluminación)','b3_luz','$/mes','Tarifa comercial Río Cuarto',true],
+              ['Despostador / maestro carnicero','b3_sueldo1','$/mes','Salario bruto + cargas sociales (~1.6×)',true],
+              ['Operario envasado + armado pedidos','b3_sueldo2','$/mes','Part-time con cargas sociales',true],
+              ['Insumos envasado al vacío','b3_insumos','$/mes','Bolsas premium D2C $800–1.200/unidad',true],
+              ['Amortización maquinaria (5 años)','b3_amort','$/mes','Cámara + envasadora + sierra + balanza',true],
+              ['Mantenimiento + limpieza + sanitización','b3_mant','$/mes',null,false],
+              ['Seguros + habilitaciones + impuestos locales','b3_seguros','$/mes','Incluye gestión SENASA y RPPA',true],
+              ['Adecuación edilicia SENASA (amort. 12 meses)','b3_obra','$/mes','⚠ Nuevo — trampa grasa, vestuario, piletas',true],
+            ].map(([label,key,unit,sub,upd])=>(
+              <IRow key={key} label={label} sub={sub} value={v[key]} onChange={val=>set(key,val)} unit={unit} result={fmt(v[key]/4.33)+'/sem'} updated={upd} pinned={pin(key)} onPin={()=>togglePin(key)}/>
+            ))}
+            {totalRow('TOTAL BLOQUE 3 / semana',b3S)}
+          </Card>}
+
+          {finTab==='comercial'&&<Card title="Costos de comercialización D2C" badge="Bloque 4" badgeColor="amber">
+            {IR('Packaging por pedido','b4_pack','$/pedido','Bolsas premium D2C: $3.500–5.000/pedido real',true)}
+            <IRow label="Pedidos promedio / semana" value={v.b4_pedidos} onChange={val=>set('b4_pedidos',val)} unit="pedidos" result={fmt(packS)+'/sem'} pinned={pin('b4_pedidos')} onPin={()=>togglePin('b4_pedidos')}/>
+            {IR('Delivery última milla (costo/pedido)','b4_delivery','$/pedido','Moto con caja térmica',true)}
+            <IRow label="Comisión pasarela de pago" value={v.b4_mp} onChange={val=>set('b4_mp',val)} unit="%" result={fmtPct(v.b4_mp)} pinned={pin('b4_mp')} onPin={()=>togglePin('b4_mp')}/>
+            {IR('Marketing digital mensual','b4_mkt','$/mes','Pauta Meta + contenido + community manager',true)}
+            {IR('Web + e-commerce + herramientas','b4_web','$/mes',null,false)}
+            {IR('Responsable ventas / gestión digital','b4_ventas','$/mes','⚠ Nuevo — rol crítico para el canal D2C',true)}
+            {totalRow('TOTAL BLOQUE 4 / semana',b4S)}
+          </Card>}
+
+          {finTab==='resumen'&&<>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+              <Card title="Composición del costo por kg" badge="Desglose" badgeColor="blue">
+                <div style={{padding:20}}>
+                  <Bar label="B1 · Campo" value={b1kg} max={maxKg} color={C.green}/>
+                  <Bar label="B2 · Faena y logística" value={b2kg} max={maxKg} color={C.amber}/>
+                  <Bar label="B3 · Operativo local" value={b3kg} max={maxKg} color={C.blue}/>
+                  <Bar label="B4 · Comercialización" value={b4kg} max={maxKg} color={C.red}/>
+                  <div style={{marginTop:14,padding:12,background:C.greenBg,borderRadius:10,border:`1px solid ${C.greenBorder}`}}>
+                    <div style={{fontSize:10,fontWeight:700,color:C.green,marginBottom:3}}>PRECIO MÍNIMO DE EQUILIBRIO</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:24,color:C.greenDark,fontWeight:600}}>{fmt(costoKg)}/kg</div>
+                    <div style={{fontSize:11,color:C.text3,marginTop:3}}>Para 30% de margen: <strong style={{color:C.green}}>{fmt(costoKg/0.7)}/kg</strong></div>
+                  </div>
+                </div>
+              </Card>
+              <Card title="Escenarios de venta parcial" badge="KPI crítico" badgeColor="red">
+                <div style={{padding:20}}>
+                  {[100,90,80,70,60,50].map(pct=>{
+                    const kgV=kgNS*(pct/100)
+                    const res2=v.precio_venta*kgV-(cvS*(pct/100)+cfS+mpS*(pct/100))
+                    const ok=res2>=0
+                    return <div key={pct} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:6,borderRadius:8,background:pct===70?(ok?C.greenBg:C.redBg):C.surface2,border:`${pct===70?2:1}px solid ${pct===70?(ok?C.greenBorder:C.redBorder):C.border}`}}>
+                      <span style={{fontSize:12,fontWeight:pct===70?700:400,color:C.text2}}>{pct}% vendido</span>
+                      <span style={{fontSize:11,color:C.text3,fontFamily:"'DM Mono',monospace"}}>{Math.round(kgV)} kg</span>
+                      <span style={{fontFamily:"'Fraunces',serif",fontSize:14,fontWeight:700,color:ok?C.green:C.red}}>{fmt(res2)}</span>
+                    </div>
+                  })}
+                  <div style={{marginTop:8,fontSize:11,color:C.text3,background:C.surface2,borderRadius:8,padding:'8px 12px'}}>⚠ El 70% es el KPI crítico: por debajo el modelo no es viable con precios de mayo 2026.</div>
+                </div>
+              </Card>
+            </div>
+            <Card title="Comparación v1 (original) vs v2 (mayo 2026)" badge="Auditoría de precios" badgeColor="red">
+              <div style={{padding:20}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr>{['Concepto','V1 (original)','V2 (mayo 2026)','Diferencia'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',padding:'8px 12px',textAlign:'left',borderBottom:`2px solid ${C.border}`,letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {[['Costo ternero/cab','$180.000',fmt(v.b1_ternero),'red'],
+                      ['Ración feedlot/cab','$90.000',fmt(v.b1_racion),'red'],
+                      ['Packaging/pedido','$1.800',fmt(v.b4_pack),'red'],
+                      ['Costo total/kg neto',fmt(3500),fmt(costoKg),'red'],
+                      ['Precio necesario (30% margen)','~$10.000/kg',fmt(costoKg/0.7),'amber'],
+                    ].map(([label,v1,v2,variant])=>(
+                      <tr key={label} style={{borderBottom:`1px solid ${C.border}`}}>
+                        <td style={{padding:'10px 12px',fontSize:12,color:C.text}}>{label}</td>
+                        <td style={{padding:'10px 12px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.green}}>{v1}</td>
+                        <td style={{padding:'10px 12px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.red,fontWeight:700}}>{v2}</td>
+                        <td style={{padding:'10px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:20,background:variant==='red'?C.redBg:C.amberBg,color:variant==='red'?C.red:C.amber}}>▲ Subió</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </>}
+        </div>
+
+        {/* RIGHT PANEL */}
+        <div style={{background:C.surface,borderLeft:`1px solid ${C.border}`,padding:18,position:'sticky',top:0,maxHeight:'calc(100vh - 172px)',overflowY:'auto',boxShadow:'-2px 0 8px rgba(0,0,0,0.04)'}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:15,color:C.navy,fontWeight:600,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>📊 Tablero en tiempo real</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:14}}>
+            <Kpi label="Kg netos / semana" value={Math.round(kgNS)+' kg'} sub={v.animales_semana+' novillos · ×0.435'} variant="green" full/>
+            <Kpi label="Costo / semana" value={fmt(totS)} variant="amber"/>
+            <Kpi label="Costo / kg neto" value={fmt(costoKg)} sub="envasado entregado" variant="amber"/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>Desglose costo/kg</div>
+            <Bar label="Campo" value={b1kg} max={maxKg} color={C.green}/>
+            <Bar label="Faena + logística" value={b2kg} max={maxKg} color={C.amber}/>
+            <Bar label="Operativo local" value={b3kg} max={maxKg} color={C.blue}/>
+            <Bar label="Comercialización" value={b4kg} max={maxKg} color={C.red}/>
+          </div>
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Precio de venta promedio/kg</div>
+            <div style={{display:'flex',alignItems:'center',gap:5,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:'7px 11px',marginBottom:5}}>
+              <span style={{color:C.text3,fontSize:13}}>$</span>
+              <input type="number" value={v.precio_venta} onChange={e=>set('precio_venta',e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'Fraunces',serif",fontSize:20,color:C.navy,width:'100%',outline:'none',textAlign:'right',fontWeight:600}}/>
+              <span style={{color:C.text3,fontSize:11}}>/kg</span>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
+              <div style={{padding:'8px 10px',background:mv==='green'?C.greenBg:mv==='amber'?C.amberBg:C.redBg,borderRadius:8,border:`1px solid ${mv==='green'?C.greenBorder:mv==='amber'?C.amberBorder:C.redBorder}`}}>
+                <div style={{fontSize:9,color:C.text3,marginBottom:2}}>Margen/kg</div>
+                <div style={{fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:mv==='green'?C.green:mv==='amber'?C.amber:C.red}}>{fmt(margenKg)}</div>
+              </div>
+              <div style={{padding:'8px 10px',background:mv==='green'?C.greenBg:mv==='amber'?C.amberBg:C.redBg,borderRadius:8,border:`1px solid ${mv==='green'?C.greenBorder:mv==='amber'?C.amberBorder:C.redBorder}`}}>
+                <div style={{fontSize:9,color:C.text3,marginBottom:2}}>Margen %</div>
+                <div style={{fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:mv==='green'?C.green:mv==='amber'?C.amber:C.red}}>{fmtPct(margenPct)}</div>
+              </div>
+            </div>
+          </div>
+          <div style={{background:rv==='green'?C.greenBg:C.redBg,border:`1px solid ${rv==='green'?C.greenBorder:C.redBorder}`,borderRadius:12,padding:12}}>
+            <div style={{fontSize:9,fontWeight:700,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>Proyección semanal</div>
+            {[['Ingresos brutos',fmt(ingB)],['Costos variables',fmt(cvS)],['Costos fijos sem.',fmt(cfS)]].map(([l,val])=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:11,padding:'2px 0'}}>
+                <span style={{color:C.text2}}>{l}</span>
+                <span style={{fontFamily:"'DM Mono',monospace",color:C.text}}>{val}</span>
               </div>
             ))}
-          </div>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function InquilinoSection({ vals: v, set, inqIngM, inqIngA, inqTerneros, inqRed }) {
-  return (
-    <>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Análisis del inquilino</div>
-      <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>5.5 kg novillo/animal/mes · precio novillo $4.400/kg actualizado mayo 2026</div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        {[['Animales inquilino','inq_animales','cab'],['Arrendamiento','inq_kg','kg/cab/mes'],['Precio novillo gordo','inq_precio','$/kg'],['Precio ternero destete','inq_precio_t','$/kg'],['Meses contrato','inq_meses','meses']].map(([label, key, unit]) => (
-          <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#141A16', border: '1px solid #334438', borderRadius: 3, padding: '4px 8px' }}>
-              <input type="number" value={v[key]} onChange={e => set(key, e.target.value)} style={{ background: 'none', border: 'none', color: '#E8F2E0', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, width: 80, outline: 'none', textAlign: 'right' }} />
-              <span style={{ color: '#4A6048', fontSize: 9 }}>{unit}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {[
-          { title: 'Opción A — Cobro en dinero', sub: 'Situación actual', rec: false, rows: [['Ingreso mensual', fmt(inqIngM)], ['Ingreso anual nominal', fmt(inqIngA)], ['Erosión inflacionaria', '~30% en 6 meses'], ['Poder real en dic-26', fmt(inqIngA * 0.7)], ['Aporte al flujo D2C', 'Ninguno']], foot: ['Valor real anual', fmt(inqIngA * 0.7), 'amber'] },
-          { title: 'Opción B — Cobro en terneros', sub: 'Recomendado', rec: true, rows: [['Terneros equiv. / año', inqTerneros + ' terneros de destete'], ['Peso de entrega', '180–220 kg'], ['Reducción compras ext.', inqRed + '% menos compras ext.'], ['Ahorro suplementación', fmt(inqTerneros * 105000)], ['Protección inflacionaria', 'Total — indexado al novillo']], foot: ['Impacto flujo mensual', (inqTerneros / 12).toFixed(1) + ' animales/mes', 'green'] },
-        ].map(card => (
-          <div key={card.title} style={{ background: '#141A16', border: `1px solid ${card.rec ? '#2E7D48' : '#263028'}`, borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '9px 12px', borderBottom: '1px solid #263028', background: card.rec ? '#1A4028' : 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 13, color: '#E8F2E0' }}>{card.title}</div>
-              {card.rec && <span style={{ fontSize: 8, padding: '2px 6px', borderRadius: 20, background: '#2E7D48', color: '#E8F2E0' }}>Recomendado</span>}
-              {!card.rec && <span style={{ fontSize: 8, color: '#4A6048' }}>{card.sub}</span>}
-            </div>
-            <div style={{ padding: '10px 12px' }}>
-              {card.rows.map(([label, val]) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #263028', fontSize: 9 }}>
-                  <span style={{ color: '#4A6048' }}>{label}</span>
-                  <span style={{ color: '#D0E4C8', fontWeight: 500 }}>{val}</span>
+            <div style={{borderTop:`1px solid ${rv==='green'?C.greenBorder:C.redBorder}`,marginTop:8,paddingTop:8}}>
+              {[['Resultado semana',fmt(resSem)],['Resultado mes',fmt(resMes)]].map(([l,val])=>(
+                <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                  <span style={{fontSize:12,fontWeight:600,color:C.text}}>{l}</span>
+                  <span style={{fontFamily:"'Fraunces',serif",fontSize:15,fontWeight:600,color:rv==='green'?C.green:C.red}}>{val}</span>
                 </div>
               ))}
             </div>
-            <div style={{ padding: '8px 12px', borderTop: '1px solid #334438', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em' }}>{card.foot[0]}</span>
-              <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: 18, color: card.foot[2] === 'green' ? '#52C278' : '#D4A843' }}>{card.foot[1]}</span>
-            </div>
           </div>
-        ))}
-      </div>
-    </>
-  )
-}
-
-function SuplSection({ vals: v, set, sCostoA, sKgEx, sValEx, sRes, sCostoKg, sDiasAh }) {
-  return (
-    <>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Suplementación invernal</div>
-      <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>$500/día confirmado · 7 meses mayo–noviembre · 144 animales en sistema</div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        {[['Costo $/animal/día','s_dia','$/día'],['Meses','s_meses','meses'],['Animales en recría','s_anim','cab'],['GDP con suplemento','s_gdp','kg/día'],['GDP sin suplemento','s_gdpsin','kg/día'],['Precio novillo gordo','s_pnov','$/kg']].map(([label, key, unit]) => (
-          <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{ fontSize: 8, color: '#4A6048', textTransform: 'uppercase', letterSpacing: '.08em' }}>{label}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#141A16', border: '1px solid #334438', borderRadius: 3, padding: '4px 8px' }}>
-              <input type="number" value={v[key]} onChange={e => set(key, e.target.value)} step={key === 's_gdp' || key === 's_gdpsin' ? '0.05' : '1'} style={{ background: 'none', border: 'none', color: '#E8F2E0', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, width: 80, outline: 'none', textAlign: 'right' }} />
-              <span style={{ color: '#4A6048', fontSize: 9 }}>{unit}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 16 }}>
-        {[['Costo supl./animal', fmt(sCostoA), 'wn'],['Impacto en kg neto', fmt(sCostoKg)+'/kg', 'wn'],['Kg extra ganados', sKgEx.toFixed(1)+' kg', 'hl'],['Resultado neto', (sRes >= 0 ? '+' : '')+fmt(sRes), sRes >= 0 ? 'hl' : 'dn']].map(([label, val, variant]) => (
-          <div key={label} style={{ background: variant === 'hl' ? '#1A4028' : variant === 'wn' ? '#221A08' : '#221008', border: `1px solid ${variant === 'hl' ? '#2E7D48' : variant === 'wn' ? '#8A6A18' : '#8A2018'}`, borderRadius: 4, padding: '10px 12px' }}>
-            <div style={{ fontSize: 8, color: variant === 'hl' ? '#52C278' : variant === 'wn' ? '#D4A843' : '#C85A4A', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 20, color: '#E8F2E0', lineHeight: 1 }}>{val}</div>
-          </div>
-        ))}
-      </div>
-      <div style={S.infoBox}>
-        <div style={S.infoTitle}>Conclusión</div>
-        <div style={S.infoBody}>
-          {sRes >= 0
-            ? `Justificada económicamente. Cada animal genera +${fmt(sRes)} de resultado neto (${sKgEx.toFixed(0)} kg extra × $${v.s_pnov.toLocaleString('es-AR')}/kg + ${sDiasAh.toFixed(0)} días de recría ahorrados). La función principal es de continuidad operativa: sin suplementación los animales llegan al feedlot con 3–4 meses de retraso, rompiendo el flujo de la cinta y destruyendo el modelo D2C.`
-            : `Con los parámetros actuales, revisá el período de suplementación. Concentrá la intensidad en julio–septiembre (máximo impacto) y evaluá reducir de 7 a 5 meses. Maíz propio vs. pellets comprados puede reducir el costo diario un 30–40%.`}
+          <div style={{marginTop:10,fontSize:10,color:C.text3,textAlign:'center',lineHeight:1.7}}>📌 = fijado · no editable<br/>Cambios se guardan automáticamente</div>
         </div>
       </div>
-    </>
-  )
-}
+    </>}
 
-function AuditRiesgos() {
-  const risks = [
-    { level: 'critical', title: 'Habilitación SENASA / RPPA del local', body: 'El proceso de habilitación como establecimiento elaborador en Córdoba toma 3–8 meses. Durante ese tiempo los costos fijos del local corren sin ingresos. Mitigación: iniciar el trámite antes de firmar contrato del local. Contratar asesor bromatológico desde el día 0.' },
-    { level: 'critical', title: 'Capital inmovilizado en el ciclo productivo', body: 'El ternero comprado en enero se faena en diciembre: 11 meses de capital inmovilizado a $1.316.000/cabeza. Para 67 animales = $88M inmovilizados en promedio. Los propios tardan 23 meses desde el nacimiento. Mitigación: líneas ganaderas BNA/BICE o escalar gradualmente.' },
-    { level: 'critical', title: 'Corte oscuro (DFD) — pérdida de lote', body: 'Con 500–600 km de viaje en verano santiagueño, la probabilidad de DFD en al menos 1 animal por mes es real. Un animal afectado = pérdida del 33% de la producción semanal. Mitigación: protocolo de ayuno 12h + descanso previo + viaje nocturno en verano + reserva de contingencia en B2.' },
-    { level: 'critical', title: 'Demanda insuficiente en el arranque', body: 'El modelo es viable al 70%+ de venta semanal. Si el primer mes vendés el 30%, el déficit es de $8–10M. Mitigación: pre-validar demanda con 50 compradores comprometidos ANTES de invertir. Esa es la condición de inicio del proyecto.' },
-    { level: 'medium', title: 'IVA diferencial — trampa impositiva', body: 'En monotributo no podés trasladar el IVA 10.5% sobre ventas. Pérdida de ~$400.000/semana. En responsable inscripto el saldo técnico puede ser favorable. Acción: definir situación impositiva ANTES de operar.' },
-    { level: 'medium', title: 'Precio del ternero indexado al dólar', body: 'El maíz del feedlot y el valor del ternero siguen al tipo de cambio. Un salto del 20% en el dólar sube el costo del animal en ~$260.000 y la ración en ~$77.000. Mitigación: cláusula de ajuste trimestral de precios al consumidor ligada al MAG.' },
-    { level: 'medium', title: 'Escasez de hacienda en 2026', body: 'La faena cayó 8% interanual en 2026. Los frigoríficos advierten que la escasez no se resuelve en el corto plazo. Mitigación: contratos de compra forward con proveedores de confianza a precio fijo trimestral.' },
-    { level: 'medium', title: 'Rol de ventas no presupuestado en v1', body: 'El D2C sin gestor digital dedicado no escala. Incorporado en B4 como $400.000/mes. Sin este rol, el canal se apaga. Es el rol más crítico para sostener la demanda semana a semana.' },
-    { level: 'low', title: 'Continuidad de la cadena de frío', body: 'Falla del equipo de frío en el camión = pérdida del lote. Mitigación: exigir al transportista seguro de carga + termógrafo certificado en cada viaje. Costo adicional mínimo, impacto enorme.' },
-  ]
-  return (
-    <>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Mapa de riesgos operativos</div>
-      <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>Puntos ciegos identificados · priorizados por impacto</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {risks.map(risk => (
-          <div key={risk.title} style={S.riskCard(risk.level)}>
-            <div style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '.1em', color: risk.level === 'critical' ? '#C85A4A' : risk.level === 'medium' ? '#D4A843' : '#52C278', marginBottom: 4 }}>⚑ {risk.level === 'critical' ? 'Riesgo crítico' : risk.level === 'medium' ? 'Riesgo medio' : 'Riesgo bajo'}</div>
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 13, color: '#E8F2E0', marginBottom: 6 }}>{risk.title}</div>
-            <div style={{ fontSize: 9, color: '#849E80', lineHeight: 1.7 }}>{risk.body}</div>
-          </div>
-        ))}
+    {/* ══ MIX DE CORTES ══ */}
+    {mod==='mix'&&<>
+      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
+        <SI label="Precio mix ponderado" value={fmt(mixPrecio)+'/kg'} variant="green"/>
+        <Div/><SI label="Ingreso semanal" value={fmt(mixTotIng)}/>
+        <Div/><SI label="Margen mix" value={fmt(mixTotIng-totS)} variant={mixTotIng-totS>=0?'green':'red'}/>
+        <Div/><SI label="Resultado mensual" value={fmt((mixTotIng-totS)*4.33)} variant={(mixTotIng-totS)*4.33>=0?'green':'red'}/>
       </div>
-    </>
-  )
-}
+      <div style={{padding:'24px'}}>
+        <Alert type="warning" icon="⚠️" title="Punto ciego crítico — corregido en v2"
+          body="El modelo original usaba $12.000/kg sin desglosar cortes. Los precios al consumidor en mayo 2026 van de $10.381 (picada) a $24.000 (lomo). El mix real determina la rentabilidad: la diferencia entre vender asado vs. cortes premium puede ser de $5.000–8.000/kg en el precio promedio ponderado."/>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 260px',gap:20}}>
+          <Card title="Distribución de cortes por res" badge="Editá kg y precio D2C" badgeColor="blue">
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:C.surface2}}>
+                {['Corte','Kg/res','Precio D2C $/kg','Ingreso/sem','%'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h!=='Corte'?'right':'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {v.mix.map((c,i)=>{
+                  const ing=c.kg*c.precio*v.animales_semana
+                  const pct=mixTotIng>0?(ing/mixTotIng*100):0
+                  const dot=i<=5?C.green:i<=8?C.amber:C.red
+                  return <tr key={i} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:'7px 14px',fontSize:12,color:C.text,fontWeight:500}}>
+                      <span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:dot,marginRight:8}}/>
+                      {c.nombre}
+                    </td>
+                    <td style={{padding:'7px 14px',textAlign:'right'}}>
+                      <input type="number" value={c.kg} onChange={e=>setMix(i,'kg',e.target.value)} style={{width:55,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                    </td>
+                    <td style={{padding:'7px 14px',textAlign:'right'}}>
+                      <input type="number" value={c.precio} onChange={e=>setMix(i,'precio',e.target.value)} style={{width:80,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                    </td>
+                    <td style={{padding:'7px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:600,color:C.green}}>{fmt(ing)}</td>
+                    <td style={{padding:'7px 14px',textAlign:'right',fontSize:11,color:C.text3}}>{pct.toFixed(1)}%</td>
+                  </tr>
+                })}
+                <tr style={{background:C.surface2,borderTop:`2px solid ${C.border2}`}}>
+                  <td style={{padding:'9px 14px',fontSize:12,fontWeight:700,color:C.text}}>TOTAL</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.green}}>{Math.round(mixTotKg)} kg</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.amber}}>{fmt(mixPrecio)}/kg</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.green}}>{fmt(mixTotIng)}</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontSize:11,color:C.text3}}>100%</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style={{padding:'10px 20px',background:C.surface2,fontSize:10,color:C.text3}}>🟢 Premium (lomo, bifes, cuadril, vacío, nalga, peceto) · 🟡 Medios · 🔴 Económicos</div>
+          </Card>
+          <div>
+            <Kpi label="Precio promedio ponderado" value={fmt(mixPrecio)+'/kg'} variant="green"/>
+            <div style={{height:10}}/>
+            <Kpi label="Margen bruto total" value={fmt(mixTotIng-totS)} variant={mixTotIng-totS>=0?'green':'red'}/>
+            <div style={{height:10}}/>
+            <Kpi label="Resultado mensual" value={fmt((mixTotIng-totS)*4.33)} variant={(mixTotIng-totS)*4.33>=0?'green':'red'}/>
+            <div style={{height:16}}/>
+            <Card title="Por segmento" badge="Ingresos" badgeColor="blue">
+              <div style={{padding:14}}>
+                {[['🟢 Premium',v.mix.slice(0,6).reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0),C.green],
+                  ['🟡 Medios',v.mix.slice(6,9).reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0),C.amber],
+                  ['🔴 Económicos',v.mix.slice(9).reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0),C.red],
+                ].map(([label,ing,color])=>(
+                  <div key={label} style={{marginBottom:10}}>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
+                      <span style={{color:C.text2}}>{label}</span>
+                      <span style={{fontFamily:"'DM Mono',monospace",color:C.text,fontWeight:500}}>{mixTotIng>0?((ing/mixTotIng)*100).toFixed(0):0}%</span>
+                    </div>
+                    <div style={{height:6,background:C.surface2,borderRadius:3,overflow:'hidden'}}>
+                      <div style={{height:'100%',width:mixTotIng>0?`${(ing/mixTotIng)*100}%`:'0%',background:color,borderRadius:3,transition:'width .4s'}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </>}
 
-function AuditPrecios() {
-  return (
-    <>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Precios reales verificados — Mayo 2026</div>
-      <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>Fuentes: CACG abr-2026 · MAGYP SIO CARNES abr-2026 · IPCVA mar-abr-2026</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div style={S.infoBox}>
-          <div style={S.infoTitle}>Hacienda en pie — Remates feria abril 2026 (CACG)</div>
-          <table style={S.table}>
-            <thead><tr><th style={S.th}>Categoría</th><th style={S.th}>Peso</th><th style={{ ...S.th, textAlign: 'right' }}>$/kg prom.</th></tr></thead>
-            <tbody>
-              {[['Terneros','180–200 kg','$6.580','amber'],['Novillitos','200–230 kg','$6.379','amber'],['Novillitos','260–300 kg','$5.337',null],['Novillo gordo (SIO)','+ 430 kg','$4.297','green'],['Novillo gordo (MAG)','+ 430 kg','$4.375','green']].map(([cat, peso, precio, variant]) => (
-                <tr key={cat+peso}><td style={S.td}>{cat}</td><td style={S.td}>{peso}</td><td style={{ ...S.td, textAlign: 'right', color: variant === 'green' ? '#52C278' : variant === 'amber' ? '#D4A843' : '#D0E4C8', fontWeight: 500 }}>{precio}</td></tr>
+    {/* ══ FLUJO DE CAJA ══ */}
+    {mod==='caja'&&<>
+      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
+        <SI label="Capital trabajo inicial" value={fmt(cfS*4.33*3)} variant="amber"/>
+        <Div/><SI label="Break-even" value={beMonth>0?'Mes '+beMonth:'> 12 meses'} variant={beMonth>0&&beMonth<=8?'green':'red'}/>
+        <Div/><SI label="Inversión total" value={fmt(v.cj_inversion)} variant="red"/>
+        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+          <Tab active={cajaTab==='mensual'} onClick={()=>setCajaTab('mensual')} label="Flujo mensual"/>
+          <Tab active={cajaTab==='capital'} onClick={()=>setCajaTab('capital')} label="Capital de trabajo"/>
+        </div>
+      </div>
+      <div style={{padding:'24px'}}>
+        {cajaTab==='mensual'&&<>
+          <Alert type="warning" icon="⚠️" title="Riesgo de liquidez no modelado en v1"
+            body="El modelo anterior mostraba resultado semanal pero no el flujo de caja en el tiempo. Los primeros 3 meses son críticos: la habilitación SENASA tarda, la demanda arranca baja y los costos fijos corren desde el día 1."/>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20}}>
+            {[['Inversión inicial','cj_inversion','$'],['% ventas mes 1','cj_ramp1','%'],['% ventas mes 2–3','cj_ramp2','%'],['% ventas mes 4–6','cj_ramp3','%'],['% ventas mes 7–12','cj_ramp4','%']].map(([label,key,unit])=>(
+              <div key={key}>
+                <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px',boxShadow:sh}}>
+                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:90,outline:'none',textAlign:'right'}}/>
+                  <span style={{fontSize:11,color:C.text3}}>{unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Card title="Proyección mes a mes — Primeros 12 meses" badge="Flujo de caja" badgeColor="blue">
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:C.surface2}}>
+                {['Mes','% Ventas','Kg vendidos','Ingresos','Costos var.','Costos fijos','Resultado','Acumulado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 12px',textAlign:h!=='Mes'&&h!=='% Ventas'?'right':'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {cajaRows.map(({mes,pct,ing,cv2,res,acum:ac},i)=>(
+                  <tr key={i} className="rh" style={{borderBottom:`1px solid ${C.border}`,background:ac>=0?'rgba(22,163,74,.04)':'transparent'}}>
+                    <td style={{padding:'9px 12px',fontSize:12,color:C.text,fontWeight:500}}>{mes}</td>
+                    <td style={{padding:'9px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:20,background:pct>=80?C.greenBg:pct>=60?C.amberBg:C.redBg,color:pct>=80?C.green:pct>=60?C.amber:C.red}}>{pct}%</span></td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text2}}>{Math.round(kgNS*(pct/100)*4.33)} kg</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text}}>{fmt(ing)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text}}>{fmt(cv2)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text}}>{fmt(costoFM)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,color:res>=0?C.green:C.red}}>{fmt(res)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,color:ac>=0?C.green:C.red}}>{fmt(ac)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>}
+        {cajaTab==='capital'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+          <Card title="Inversión inicial requerida" badge="Estimación" badgeColor="amber">
+            <div style={{padding:20}}>
+              {[['Cámara frigorífica (usada buen estado)','$6M – $8M'],['Envasadora al vacío doble cámara','$1.5M – $2.5M'],['Sierra + mesa acero inox.','$800k – $1.2M'],['Balanza + impresora etiquetas','$600k – $900k'],['Bolsas isotérmicas + equipo delivery','$400k – $600k'],['Adecuación edilicia SENASA','$2M – $5M'],['Habilitación + tramitación','$500k – $1M'],['Capital de trabajo (3 meses)','$8M – $12M']].map(([label,val])=>(
+                <div key={label} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:`1px solid ${C.border}`}}>
+                  <span style={{fontSize:12,color:C.text2}}>{label}</span>
+                  <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:600,color:C.amber}}>{val}</span>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={S.infoBox}>
-          <div style={S.infoTitle}>Precios al consumidor — Carnicerías abril 2026 (IPCVA)</div>
-          <table style={S.table}>
-            <thead><tr><th style={S.th}>Corte</th><th style={{ ...S.th, textAlign: 'right' }}>$/kg</th></tr></thead>
-            <tbody>
-              {[['Picada común','$10.381'],['Asado de tira','$18.091'],['Nalga','$21.559'],['Vacío','$22.327'],['Cuadril','$21.357'],['Peceto','$23.391'],['Promedio ponderado','$18.559']].map(([corte, precio]) => (
-                <tr key={corte}><td style={{ ...S.td, color: corte === 'Promedio ponderado' ? '#E8F2E0' : '#849E80', fontWeight: corte === 'Promedio ponderado' ? 500 : 400 }}>{corte}</td><td style={{ ...S.td, textAlign: 'right', color: corte === 'Promedio ponderado' ? '#D4A843' : '#D0E4C8', fontWeight: 500 }}>{precio}</td></tr>
+              <div style={{display:'flex',justifyContent:'space-between',padding:'12px 0'}}>
+                <span style={{fontSize:13,fontWeight:700,color:C.text}}>TOTAL ESTIMADO</span>
+                <span style={{fontFamily:"'Fraunces',serif",fontSize:18,fontWeight:600,color:C.red}}>$20M – $31M</span>
+              </div>
+            </div>
+          </Card>
+          <Card title="Puntos ciegos de liquidez" badge="⚑ Auditoría" badgeColor="red">
+            <div style={{padding:20}}>
+              {[['Ciclo productivo propio','Un ternero nacido en octubre no genera ingreso hasta septiembre del año +2. Son 23 meses de capital inmovilizado por animal.'],['IVA diferencial','En monotributo se pierde el 10.5% sobre ventas (~$400.000/semana). Definir situación impositiva antes de operar.'],['Habilitación SENASA','3–8 meses de proceso. Los costos fijos del local corren desde el día 1 sin ingresos operativos.'],['Primer año 100% compras','Los propios no completan su ciclo hasta el año +2. El costo del año 1 es el más alto de toda la operación.']].map(([title,body])=>(
+                <div key={title} style={{marginBottom:12,padding:'10px 14px',background:C.redBg,borderRadius:10,border:`1px solid ${C.redBorder}`}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.red,marginBottom:3}}>⚑ {title}</div>
+                  <div style={{fontSize:11,color:'#7F1D1D',lineHeight:1.6}}>{body}</div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          <div style={{ fontSize: 8, color: '#4A6048', marginTop: 6, lineHeight: 1.6 }}>La carne dejó de aumentar en abril 2026. Precios estabilizados. Contexto favorable para D2C premium que no compite en precio sino en trazabilidad.</div>
-        </div>
+            </div>
+          </Card>
+        </div>}
       </div>
-    </>
-  )
-}
+    </>}
 
-function AuditChecklist() {
-  const items = [
-    ['1', 'Consulta inicial SENASA + bromatólogo Río Cuarto', 'Semana 1', 'Todo', 'Productor', 'critical'],
-    ['2', 'Validar 50 compradores comprometidos (pre-venta)', 'Semanas 1–4', 'Inversión', 'Productor', 'critical'],
-    ['3', 'Definir situación impositiva (monotributo vs. RI)', 'Semana 2', 'Finanzas', 'Contador', 'medium'],
-    ['4', 'Acordar servicio de faena con frigorífico en ruta', 'Mes 1', 'Logística', 'Productor', 'medium'],
-    ['5', 'Firmar local + iniciar obra de adecuación SENASA', 'Mes 1–2', 'Operación', 'Productor', 'medium'],
-    ['6', 'Comprar equipos (cámara, envasadora, sierra)', 'Mes 2', 'Producción', 'Productor', 'medium'],
-    ['7', 'Contratar despostador + sistema de trazabilidad', 'Mes 2–3', 'Calidad', 'Productor', 'low'],
-    ['8', 'Lanzar Instagram + WhatsApp Business', 'Mes 1', 'Ventas', 'Digital', 'low'],
-    ['9', 'Contratar responsable ventas digital (part-time)', 'Mes 2', 'Demanda', 'Productor', 'low'],
-    ['10', 'Primera faena piloto (1 novillo) + degustación chefs', 'Mes 3–4', 'Marca', 'Todo el equipo', 'low'],
-    ['11', 'Lanzamiento e-commerce + primer ciclo semanal', 'Mes 4–5', 'Escala', 'Todo el equipo', 'low'],
-    ['12', 'Negociar canje arriendo con inquilino en terneros', 'Antes de nov-26', 'Costos', 'Productor', 'low'],
-  ]
-  const colorMap = { critical: '#C85A4A', medium: '#D4A843', low: '#52C278' }
-  return (
-    <>
-      <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 17, color: '#E8F2E0', marginBottom: 2 }}>Checklist ejecutivo de lanzamiento</div>
-      <div style={{ fontSize: 8, color: '#4A6048', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 14 }}>Condiciones mínimas para iniciar operaciones — ordenadas por prioridad</div>
-      <table style={S.table}>
-        <thead><tr>{['#','Acción','Horizonte','Bloquea','Responsable'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
-        <tbody>
-          {items.map(([num, accion, horizonte, bloquea, resp, level]) => (
-            <tr key={num}>
-              <td style={{ ...S.td, color: '#E8F2E0', fontWeight: 500 }}>{num}</td>
-              <td style={{ ...S.td, color: colorMap[level] }}>{accion}</td>
-              <td style={S.td}>{horizonte}</td>
-              <td style={{ ...S.td, color: level === 'critical' ? '#C85A4A' : level === 'medium' ? '#D4A843' : '#849E80', fontWeight: 500 }}>{bloquea}</td>
-              <td style={S.td}>{resp}</td>
-            </tr>
+    {/* ══ CINTA PRODUCTIVA ══ */}
+    {mod==='prod'&&<>
+      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+        <SI label="Vacas madre" value="100"/>
+        <Div/><SI label="Destete 77%" value="77/año" variant="green"/>
+        <Div/><SI label="Compras" value="67/año" variant="amber"/>
+        <Div/><SI label="Ciclo propio" value="27–28 meses" variant="amber"/>
+        <Div/><SI label="Faena" value="3/sem · 12/mes" variant="green"/>
+        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+          {[['gantt','Flujo anual'],['compras','Compras'],['inquilino','Inquilino'],['supl','Suplementación']].map(([id,label])=>(
+            <Tab key={id} active={prodTab===id} onClick={()=>setProdTab(id)} label={label}/>
           ))}
-        </tbody>
-      </table>
-      <div style={{ fontSize: 8, color: '#4A6048', background: '#1A2218', borderRadius: 3, padding: '6px 10px', marginTop: 6, lineHeight: 1.6 }}>El primer novillo de prueba (paso 10) es el hito más importante: valida la cadena completa, genera contenido real para redes y confirma que el producto llega en condiciones al consumidor. No saltear este paso.</div>
-    </>
-  )
-}
+        </div>
+      </div>
+      <div style={{padding:'24px'}}>
+        {prodTab==='gantt'&&<>
+          <Alert type="info" icon="📅" title="Gestación 9 meses correctamente modelada"
+            body="Servicio ene–abr → gestación 9 meses → parición oct–ene → destete 7 meses → may–ago → recría 10–11 meses → 350 kg en mar–jul año N+2 → feedlot 100 días → faena. Ciclo total: 27–28 meses por animal propio. El primer año operativo del D2C es 100% animales comprados."/>
+          <Card title="Flujo mensual — Estado estacionario (año N+2 en adelante)" badge="Cinta transportadora" badgeColor="green">
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:C.surface2}}>
+                {['Mes','Propios al feedlot','Compras necesarias','Total feedlot','Origen faena','Estado margen'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {[['Ene–Feb','0','12/mes','12','100% comprados','Costo máximo','red'],['Mar–Abr','8–12','0–4','12','Mix (cabeza parición)','Propios empiezan','amber'],['May–Jun','15–20','0','12','100% propios','★ Mejor margen','green'],['Jul–Sep','10–15','0–2','12','Mayoría propios','Margen alto','green'],['Oct–Nov','3–5','7–9','12','Mix','Compras parcial','amber'],['Dic','0','12','12','100% comprados','Margen bajo','red']].map(([mes,propios,compras,feedlot,origen,estado,variant])=>(
+                  <tr key={mes} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:'10px 14px',fontSize:12,fontWeight:600,color:C.text}}>{mes}</td>
+                    <td style={{padding:'10px 14px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.green,fontWeight:600}}>{propios}</td>
+                    <td style={{padding:'10px 14px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.amber,fontWeight:600}}>{compras}</td>
+                    <td style={{padding:'10px 14px',fontFamily:"'DM Mono',monospace",fontSize:13,color:C.navy,fontWeight:700}}>{feedlot}</td>
+                    <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>{origen}</td>
+                    <td style={{padding:'10px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:20,background:variant==='green'?C.greenBg:variant==='amber'?C.amberBg:C.redBg,color:variant==='green'?C.green:variant==='amber'?C.amber:C.red}}>{estado}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>}
+        {prodTab==='compras'&&<>
+          <Alert type="info" icon="📊" title="Precio real ternero destete · Mayo 2026"
+            body="CACG abril 2026: $6.580/kg promedio → animal 200 kg = $1.316.000. El modelo original usaba $180.000. Diferencia: $1.136.000/cabeza."/>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+            {[{title:'Ventana ene–mar (27 animales)',sub:'Mejor precio relativo del año',rows:[['Precio estimado','$6.200–6.800/kg vivo','amber'],['Costo por animal','$1.240.000–1.360.000','amber'],['Suplementación adicional','$105.000/cab (7 meses)','red'],['Riesgo','Bajo — control total','green']]},
+              {title:'⚠ Evitar agosto',sub:'Pico estacional garantizado',rows:[['Precio agosto','$7.200–8.000/kg vivo','red'],['Sobrecosto vs. enero','+$120.000–280.000/cab','red'],['Causa','Todos los invernadores comprando','red'],['Alternativa','Esperar → octubre','green']]},
+              {title:'Opción sep (recriados 310 kg)',sub:'Sin suplementación · directo feedlot',rows:[['Precio estimado','~$1.581.000–1.674.000/cab','amber'],['Ahorro suplementación','$105.000/cab','green'],['Costo total campo','~$1.784.000/cab','green'],['Ventaja vs. ternero','$68.000 menos/animal','green']]},
+              {title:'Regla de decisión',sub:'Con precios mayo 2026',rows:[['Precio ternero < $6.800/kg','Comprar + recría','green'],['Precio ternero > $7.200/kg','Evaluar recriado sep.','amber'],['Precio ternero > $8.000/kg','Esperar o reducir','red'],['NUNCA en agosto','Precio pico estacional','red']]},
+            ].map(card=>(
+              <Card key={card.title} title={card.title} subtitle={card.sub}>
+                <div style={{padding:'12px 20px'}}>
+                  {card.rows.map(([label,val,variant])=>(
+                    <div key={label} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{fontSize:12,color:C.text2}}>{label}</span>
+                      <span style={{fontSize:12,fontWeight:600,color:variant==='green'?C.green:variant==='amber'?C.amber:C.red}}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>}
+        {prodTab==='inquilino'&&<>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20,padding:18,background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,boxShadow:sh}}>
+            {[['Animales inquilino','inq_animales','cab'],['Arrendamiento','inq_kg','kg/cab/mes'],['Precio novillo gordo','inq_precio','$/kg'],['Precio ternero destete','inq_precio_t','$/kg'],['Meses contrato','inq_meses','meses']].map(([label,key,unit])=>(
+              <div key={key}>
+                <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px'}}>
+                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} step={key==='inq_kg'?'.1':'1'} style={{background:'transparent',border:'none',fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:90,outline:'none',textAlign:'right'}}/>
+                  <span style={{fontSize:11,color:C.text3}}>{unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+            {[{title:'Opción A — Cobro en dinero',sub:'Situación actual',rec:false,rows:[['Ingreso mensual',fmt(v.inq_animales*v.inq_kg*v.inq_precio),'default'],['Ingreso anual nominal',fmt(inqIngA),'default'],['Erosión inflacionaria','~30% en 6 meses','red'],['Poder real en dic-26',fmt(inqIngA*0.7),'amber'],['Aporte al flujo D2C','Ninguno','red']],foot:['Valor real anual',fmt(inqIngA*0.7),'amber']},
+              {title:'Opción B — Cobro en terneros',sub:'✓ Recomendado',rec:true,rows:[['Terneros equiv. / año',inqT+' terneros de destete','green'],['Reducción compras ext.',Math.round((inqT/67)*100)+'% menos','green'],['Ahorro suplementación',fmt(inqT*105000),'green'],['Protección inflacionaria','Total — indexado al novillo','green'],['Aporte flujo mensual',(inqT/12).toFixed(1)+' animales/mes','green']],foot:['Impacto flujo mensual',(inqT/12).toFixed(1)+' animales/mes','green']},
+            ].map(card=>(
+              <div key={card.title} style={{background:C.surface,border:`1px solid ${card.rec?C.greenBorder:C.border}`,borderRadius:14,overflow:'hidden',boxShadow:sh}}>
+                <div style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`,background:card.rec?C.greenBg:C.surface2,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <span style={{fontFamily:"'Fraunces',serif",fontSize:15,color:C.text,fontWeight:600}}>{card.title}</span>
+                    <span style={{fontSize:11,color:C.text3,marginLeft:10}}>{card.sub}</span>
+                  </div>
+                  {card.rec&&<span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:20,background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green}}>Recomendado</span>}
+                </div>
+                <div style={{padding:'12px 20px'}}>
+                  {card.rows.map(([label,val,variant])=>(
+                    <div key={label} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
+                      <span style={{fontSize:12,color:C.text2}}>{label}</span>
+                      <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:600,color:variant==='green'?C.green:variant==='red'?C.red:variant==='amber'?C.amber:C.text}}>{val}</span>
+                    </div>
+                  ))}
+                  <div style={{marginTop:14,padding:12,background:card.rec?C.greenBg:C.amberBg,borderRadius:10,border:`1px solid ${card.rec?C.greenBorder:C.amberBorder}`}}>
+                    <div style={{fontSize:10,color:C.text3,marginBottom:2}}>{card.foot[0]}</div>
+                    <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:card.foot[2]==='green'?C.green:C.amber,fontWeight:600}}>{card.foot[1]}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>}
+        {prodTab==='supl'&&<>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20,padding:18,background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,boxShadow:sh}}>
+            {[['Costo $/animal/día','s_dia','$/día','1'],['Meses suplementación','s_meses','meses','.5'],['Animales en recría','s_anim','cab','1'],['GDP con suplemento','s_gdp','kg/día','.05'],['GDP sin suplemento','s_gdpsin','kg/día','.05'],['Precio novillo gordo','s_pnov','$/kg','100']].map(([label,key,unit,step])=>(
+              <div key={key}>
+                <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px'}}>
+                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} step={step} style={{background:'transparent',border:'none',fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:80,outline:'none',textAlign:'right'}}/>
+                  <span style={{fontSize:11,color:C.text3}}>{unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+            <Kpi label="Costo supl./animal" value={fmt(sCostoA)} sub="por temporada invernal" variant="amber"/>
+            <Kpi label="Impacto en kg neto" value={fmt(sCostoA/((200+sKgEx)*0.435))} sub="$/kg adicional" variant="amber"/>
+            <Kpi label="Kg extra ganados" value={sKgEx.toFixed(1)+' kg'} sub="vs. sin suplementar" variant="green"/>
+            <Kpi label="Resultado neto/animal" value={(sRes>=0?'+':'')+fmt(sRes)} sub="beneficio económico" variant={sRes>=0?'green':'red'}/>
+          </div>
+          <Alert type={sRes>=0?'success':'warning'} icon={sRes>=0?'✅':'⚠️'}
+            title={sRes>=0?'Suplementación económicamente justificada':'Revisar período de suplementación'}
+            body={sRes>=0?`Cada animal genera +${fmt(sRes)} de resultado neto (${sKgEx.toFixed(0)} kg extra × $${v.s_pnov.toLocaleString('es-AR')}/kg). Sin suplementación los animales llegan al feedlot con 3–4 meses de retraso, rompiendo el flujo de la cinta y destruyendo el modelo D2C.`:'Con los parámetros actuales, concentrá la suplementación en julio–septiembre (máximo impacto) y evaluá reducir de 7 a 5 meses. Maíz propio vs. pellets puede bajar el costo diario 30–40%.'}/>
+        </>}
+      </div>
+    </>}
 
-export default App
+    {/* ══ AUDITORÍA ══ */}
+    {mod==='audit'&&<>
+      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
+        <SI label="Riesgos críticos" value="4" variant="red"/>
+        <Div/><SI label="Riesgos medios" value="5" variant="amber"/>
+        <Div/><SI label="Mejoras incorporadas" value="7" variant="green"/>
+        <Div/><SI label="Viabilidad mayo 2026" value="Confirmada" variant="green"/>
+        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+          {[['riesgos','Riesgos'],['precios','Precios'],['checklist','Checklist']].map(([id,label])=>(
+            <Tab key={id} active={auditTab===id} onClick={()=>setAuditTab(id)} label={label}/>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:'24px'}}>
+        {auditTab==='riesgos'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          {[{type:'error',icon:'🔴',title:'Habilitación SENASA / RPPA del local',body:'El proceso de habilitación como establecimiento elaborador en Córdoba toma 3–8 meses. Los costos fijos corren sin ingresos. Iniciar el trámite antes de firmar el contrato del local y contratar asesor bromatológico desde el día 0.'},
+            {type:'error',icon:'🔴',title:'Capital inmovilizado en el ciclo productivo',body:'67 animales comprados × $1.316.000 = $88M inmovilizados. Los propios tardan 23 meses desde el nacimiento. Evaluar líneas ganaderas BNA/BICE o escalar gradualmente.'},
+            {type:'error',icon:'🔴',title:'Corte oscuro (DFD) — pérdida de lote',body:'Con 500–600 km de viaje en verano, la probabilidad de DFD en 1 animal/mes es real. Un animal afectado = 33% de producción perdida. Protocolo: ayuno 12h + viaje nocturno + reserva de contingencia en B2.'},
+            {type:'error',icon:'🔴',title:'Demanda insuficiente en el arranque',body:'Viable solo al 70%+ de venta semanal. Si el mes 1 vendés el 30%, el déficit es $8–10M. Pre-validar con 50 compradores comprometidos ANTES de invertir. Esa es la condición de inicio.'},
+            {type:'warning',icon:'🟡',title:'IVA diferencial — trampa impositiva',body:'En monotributo no podés trasladar el IVA 10.5% sobre ventas = ~$400.000/semana perdidos. Definir situación impositiva antes de operar.'},
+            {type:'warning',icon:'🟡',title:'Precio del ternero indexado al dólar',body:'Un salto cambiario del 20% sube el costo del animal en ~$260.000. Cláusula de ajuste trimestral de precios al consumidor ligada al MAG.'},
+            {type:'warning',icon:'🟡',title:'Escasez de hacienda en 2026',body:'La faena cayó 8% interanual. El precio del ternero puede seguir subiendo. Contratos de compra forward con proveedores a precio fijo trimestral.'},
+            {type:'warning',icon:'🟡',title:'Rol de ventas no presupuestado en v1',body:'El D2C sin gestor digital dedicado no escala. Incorporado en B4 como $400.000/mes. Sin este rol, el canal se apaga en pocas semanas.'},
+            {type:'info',icon:'🔵',title:'Continuidad de la cadena de frío',body:'Falla del equipo de frío en el camión = pérdida del lote. Exigir seguro de carga + termógrafo certificado en cada viaje.'},
+          ].map(r=><Alert key={r.title} type={r.type} icon={r.icon} title={r.title} body={r.body}/>)}
+        </div>}
+        {auditTab==='precios'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+          <Card title="Hacienda en pie — Remates feria abril 2026" badge="CACG" badgeColor="blue">
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:C.surface2}}>{['Categoría','Peso','$/kg prom.'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[['Terneros','180–200 kg','$6.580','amber'],['Novillitos','200–230 kg','$6.379','amber'],['Novillitos','260–300 kg','$5.337','default'],['Novillo gordo (SIO)','+430 kg','$4.297','green'],['Novillo gordo (MAG)','+430 kg','$4.375','green']].map(([cat,peso,precio,v])=>(
+                  <tr key={cat+peso} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
+                    <td style={{padding:'9px 14px',fontSize:12,color:C.text}}>{cat}</td>
+                    <td style={{padding:'9px 14px',fontSize:12,color:C.text2}}>{peso}</td>
+                    <td style={{padding:'9px 14px',fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:v==='green'?C.green:v==='amber'?C.amber:C.text}}>{precio}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+          <Card title="Precios al consumidor — Carnicerías abril 2026" badge="IPCVA" badgeColor="blue">
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead><tr style={{background:C.surface2}}>{['Corte','$/kg abr-26'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {[['Picada común','$10.381'],['Asado de tira','$18.091'],['Nalga','$21.559'],['Vacío','$22.327'],['Cuadril','$21.357'],['Peceto','$23.391'],['Promedio ponderado','$18.559']].map(([corte,precio])=>(
+                  <tr key={corte} className="rh" style={{borderBottom:`1px solid ${C.border}`,background:corte==='Promedio ponderado'?C.amberBg:'transparent'}}>
+                    <td style={{padding:'9px 14px',fontSize:12,color:C.text,fontWeight:corte==='Promedio ponderado'?700:400}}>{corte}</td>
+                    <td style={{padding:'9px 14px',fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:corte==='Promedio ponderado'?C.amber:C.text}}>{precio}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{padding:'10px 20px',fontSize:11,color:C.text3,background:C.surface2}}>La carne dejó de aumentar en abril 2026. Contexto favorable para D2C premium que no compite en precio sino en trazabilidad.</div>
+          </Card>
+        </div>}
+        {auditTab==='checklist'&&<Card title="Checklist ejecutivo de lanzamiento" badge="12 pasos" badgeColor="blue">
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:C.surface2}}>{['#','Acción','Horizonte','Bloquea','Responsable'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {[['1','Consulta inicial SENASA + bromatólogo Río Cuarto','Semana 1','Todo','Productor','red'],['2','Validar 50 compradores comprometidos (pre-venta)','Semanas 1–4','Inversión','Productor','red'],['3','Definir situación impositiva (monotributo vs. RI)','Semana 2','Finanzas','Contador','amber'],['4','Acordar servicio de faena con frigorífico en ruta','Mes 1','Logística','Productor','amber'],['5','Firmar local + iniciar obra de adecuación SENASA','Mes 1–2','Operación','Productor','amber'],['6','Comprar equipos (cámara, envasadora, sierra)','Mes 2','Producción','Productor','amber'],['7','Contratar despostador + sistema de trazabilidad','Mes 2–3','Calidad','Productor','blue'],['8','Lanzar Instagram + WhatsApp Business','Mes 1','Ventas','Digital','blue'],['9','Contratar responsable ventas digital (part-time)','Mes 2','Demanda','Productor','blue'],['10','Primera faena piloto (1 novillo) + degustación chefs','Mes 3–4','Marca','Todo','green'],['11','Lanzamiento e-commerce + primer ciclo semanal','Mes 4–5','Escala','Todo','green'],['12','Negociar canje arriendo con inquilino en terneros','Antes nov-26','Costos','Productor','green']].map(([num,accion,horizonte,bloquea,resp,variant])=>(
+                <tr key={num} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
+                  <td style={{padding:'10px 14px',fontFamily:"'Fraunces',serif",fontSize:16,fontWeight:600,color:C.navy}}>{num}</td>
+                  <td style={{padding:'10px 14px',fontSize:12,color:C.text}}>{accion}</td>
+                  <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>{horizonte}</td>
+                  <td style={{padding:'10px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:20,background:variant==='red'?C.redBg:variant==='amber'?C.amberBg:variant==='green'?C.greenBg:C.blueBg,color:variant==='red'?C.red:variant==='amber'?C.amber:variant==='green'?C.green:C.blue}}>{bloquea}</span></td>
+                  <td style={{padding:'10px 14px',fontSize:11,color:C.text3}}>{resp}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{padding:'12px 20px',background:C.amberBg,fontSize:11,color:'#92400E'}}>⭐ El primer novillo de prueba (paso 10) es el hito más importante: valida la cadena completa y genera contenido real para redes. No saltear este paso.</div>
+        </Card>}
+      </div>
+    </>}
+
+    <div style={{padding:'12px 24px',borderTop:`1px solid ${C.border}`,fontSize:10,color:C.text3,textAlign:'center',background:C.surface}}>
+      D2C Carne Premium v2.0 · Precios mayo 2026 · CACG / MAGYP / IPCVA · Sol de Julio → Río Cuarto · Firebase Firestore
+    </div>
+  </div>
+}
