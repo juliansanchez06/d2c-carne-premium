@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { createRoot } from 'react-dom/client'
 import { initializeApp } from 'firebase/app'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 
@@ -1114,5 +1113,4 @@ function AuditChecklist() {
   )
 }
 
-// ─── MOUNT ──────────────────────────────────────────────────────
-createRoot(document.getElementById('root')).render(<App />)
+export default App
