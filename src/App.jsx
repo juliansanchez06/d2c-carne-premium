@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { initializeApp } from 'firebase/app'
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyChzGFeNj350hf0zP6_g1BdqlwHo0i1uRM",
@@ -12,6 +13,7 @@ const firebaseConfig = {
 }
 const firebaseApp = initializeApp(firebaseConfig)
 const db = getFirestore(firebaseApp)
+const auth = getAuth(firebaseApp)
 const DOC_REF = doc(db, 'd2c-carne', 'config')
 
 const DEFAULTS = {
@@ -42,14 +44,14 @@ const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto'
 
 // Colors
 const C = {
-  bg:'#F7F8FA',surface:'#FFFFFF',surface2:'#F0F4F8',border:'#E2E8F0',border2:'#CBD5E1',
+  bg:'#F2EDE8',surface:'#FAF7F4',surface2:'#EDE8E2',border:'#DDD6CF',border2:'#C5BCB4',
   text:'#1A202C',text2:'#4A5568',text3:'#94A3B8',
   green:'#16A34A',greenBg:'#F0FDF4',greenBorder:'#86EFAC',greenDark:'#14532D',
   amber:'#D97706',amberBg:'#FFFBEB',amberBorder:'#FCD34D',
   red:'#DC2626',redBg:'#FEF2F2',redBorder:'#FCA5A5',
   blue:'#2563EB',blueBg:'#EFF6FF',blueBorder:'#93C5FD',
   indigo:'#4F46E5',indigoBg:'#EEF2FF',
-  navy:'#1E3A5F',
+  navy:'#6B1E1E',
 }
 const sh = '0 1px 3px rgba(0,0,0,0.08)'
 const shMd = '0 4px 6px rgba(0,0,0,0.07)'
@@ -155,8 +157,172 @@ function SI({label,value,variant}){
 }
 const Div=()=><div style={{width:1,height:30,background:C.border}}/>
 
+
+// ── LOGIN SCREEN ───────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [showPass, setShowPass] = useState(false)
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    if (!email || !password) { setError('Completá usuario y contraseña.'); return }
+    setLoading(true); setError('')
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+      onLogin()
+    } catch (err) {
+      const msgs = {
+        'auth/invalid-credential': 'Usuario o contraseña incorrectos.',
+        'auth/user-not-found': 'No existe una cuenta con ese email.',
+        'auth/wrong-password': 'Contraseña incorrecta.',
+        'auth/too-many-requests': 'Demasiados intentos. Esperá unos minutos.',
+        'auth/invalid-email': 'El formato del email no es válido.',
+      }
+      setError(msgs[err.code] || 'Error al iniciar sesión. Intentá de nuevo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh', background: '#F2EDE8',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: "'Inter', system-ui, sans-serif", padding: 20,
+    }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
+
+        {/* LOGO */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <img
+            src="/logo.png"
+            alt="El Retiro"
+            style={{ width: 180, height: 180, objectFit: 'contain' }}
+          />
+        </div>
+
+        {/* CARD */}
+        <div style={{
+          background: '#FAF7F4', borderRadius: 20,
+          border: '1px solid #DDD6CF',
+          boxShadow: '0 4px 24px rgba(107,30,30,0.08)',
+          padding: '32px 28px',
+        }}>
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#6B1E1E', letterSpacing: '-0.02em', marginBottom: 4 }}>
+              Acceso interno
+            </div>
+            <div style={{ fontSize: 13, color: '#94A3B8' }}>
+              Plataforma de gestión D2C · El Retiro
+            </div>
+          </div>
+
+          <form onSubmit={handleLogin}>
+            {/* EMAIL */}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4A5568', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setError('') }}
+                placeholder="tu@email.com"
+                autoComplete="email"
+                style={{
+                  width: '100%', padding: '11px 14px', borderRadius: 10,
+                  border: `1px solid ${error ? '#FCA5A5' : '#DDD6CF'}`,
+                  fontSize: 14, color: '#1A202C', background: '#FAF7F4',
+                  outline: 'none', fontFamily: "'Inter', sans-serif",
+                  transition: 'border-color .15s',
+                }}
+                onFocus={e => e.target.style.borderColor = '#6B1E1E'}
+                onBlur={e => e.target.style.borderColor = error ? '#FCA5A5' : '#DDD6CF'}
+              />
+            </div>
+
+            {/* PASSWORD */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#4A5568', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 6 }}>
+                Contraseña
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError('') }}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                  style={{
+                    width: '100%', padding: '11px 42px 11px 14px', borderRadius: 10,
+                    border: `1px solid ${error ? '#FCA5A5' : '#DDD6CF'}`,
+                    fontSize: 14, color: '#1A202C', background: '#FAF7F4',
+                    outline: 'none', fontFamily: "'Inter', sans-serif",
+                    transition: 'border-color .15s',
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#6B1E1E'}
+                  onBlur={e => e.target.style.borderColor = error ? '#FCA5A5' : '#DDD6CF'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(p => !p)}
+                  style={{
+                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', fontSize: 16,
+                    color: '#94A3B8', padding: 0,
+                  }}
+                >
+                  {showPass ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            {/* ERROR */}
+            {error && (
+              <div style={{
+                background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8,
+                padding: '10px 14px', fontSize: 12, color: '#DC2626', marginBottom: 16,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span>⚠</span> {error}
+              </div>
+            )}
+
+            {/* SUBMIT */}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%', padding: '13px', borderRadius: 12, border: 'none',
+                background: loading ? '#C5BCB4' : '#6B1E1E',
+                color: '#FAF7F4', fontSize: 14, fontWeight: 700,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontFamily: "'Inter', sans-serif",
+                letterSpacing: '-0.01em',
+                transition: 'all .15s',
+                boxShadow: loading ? 'none' : '0 2px 8px rgba(107,30,30,0.25)',
+              }}
+            >
+              {loading ? 'Ingresando...' : 'Ingresar →'}
+            </button>
+          </form>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 20, fontSize: 11, color: '#94A3B8' }}>
+          El Retiro · Sol de Julio → Río Cuarto · Acceso restringido
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── MAIN ──────────────────────────────────────────────────────
 export default function App(){
+  const [user,setUser]=useState(null)
+  const [authLoading,setAuthLoading]=useState(true)
   const [mod,setMod]=useState('fin')
   const [finTab,setFinTab]=useState('costos')
   const [prodTab,setProdTab]=useState('gantt')
@@ -166,6 +332,15 @@ export default function App(){
   const [savedAnim,setSavedAnim]=useState(false)
   const [vals,setVals]=useState(DEFAULTS)
   const debRef=useRef(null)
+
+  // Auth state listener
+  useEffect(()=>{
+    const unsub = onAuthStateChanged(auth, u => {
+      setUser(u)
+      setAuthLoading(false)
+    })
+    return () => unsub()
+  },[])
 
   useEffect(()=>{
     getDoc(DOC_REF).then(snap=>{
@@ -252,14 +427,28 @@ export default function App(){
     <div/><div style={{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:'#92400E',fontWeight:700,paddingRight:8}}>{fmt(val)}</div><div/>
   </div>
 
+  // Auth gate
+  if (authLoading) return (
+    <div style={{minHeight:'100vh',background:'#F2EDE8',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Inter',sans-serif"}}>
+      <div style={{textAlign:'center'}}>
+        <img src="/logo.png" alt="El Retiro" style={{width:120,height:120,objectFit:'contain',marginBottom:16}}/>
+        <div style={{fontSize:12,color:'#94A3B8'}}>Cargando...</div>
+      </div>
+    </div>
+  )
+  if (!user) return <LoginScreen onLogin={()=>{}}/>
+
   return <div style={{background:C.bg,minHeight:'100vh'}}>
     <style>{GS}</style>
 
     {/* HEADER */}
     <div style={{background:C.navy,padding:'0 24px',display:'flex',alignItems:'center',justifyContent:'space-between',height:54,boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
-      <div style={{display:'flex',alignItems:'center',gap:14}}>
-        <span style={{fontFamily:"'Inter',sans-serif",fontSize:18,color:'#FFF',fontWeight:600}}>🥩 D2C Carne Premium</span>
-        <span style={{fontSize:11,color:'#93C5FD',opacity:.8}}>Sol de Julio → Río Cuarto · Mayo 2026</span>
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        <img src="/logo.png" alt="El Retiro" style={{width:36,height:36,objectFit:'contain',borderRadius:6,background:'#FAF7F4',padding:2}}/>
+        <div>
+          <div style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:'#FFF',fontWeight:800,letterSpacing:'-0.02em',lineHeight:1}}>EL RETIRO</div>
+          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',letterSpacing:'0.06em',marginTop:1}}>DE NUESTRO CAMPO A TU MESA</div>
+        </div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
         <span style={{fontSize:10,color:'#93C5FD',fontFamily:"'JetBrains Mono',monospace"}}>{saveStatus}</span>
