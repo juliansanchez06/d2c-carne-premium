@@ -55,9 +55,9 @@ const sh = '0 1px 3px rgba(0,0,0,0.08)'
 const shMd = '0 4px 6px rgba(0,0,0,0.07)'
 
 const GS = `
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:${C.bg};color:${C.text};font-family:'DM Sans',sans-serif;font-size:13px;}
+  body{background:${C.bg};color:${C.text};font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:13px;letter-spacing:-0.01em;}
   input[type=number]{-moz-appearance:textfield;}
   input[type=number]::-webkit-inner-spin-button{display:none;}
   ::-webkit-scrollbar{width:5px;height:5px;}
@@ -82,21 +82,21 @@ function Kpi({label,value,sub,variant='default',full,large}){
   const vs={default:{bg:C.surface,border:C.border,lc:C.text3,vc:C.text},green:{bg:C.greenBg,border:C.greenBorder,lc:C.green,vc:C.greenDark},amber:{bg:C.amberBg,border:C.amberBorder,lc:C.amber,vc:'#92400E'},red:{bg:C.redBg,border:C.redBorder,lc:C.red,vc:'#7F1D1D'},blue:{bg:C.blueBg,border:C.blueBorder,lc:C.blue,vc:'#1E40AF'},navy:{bg:C.navy,border:C.navy,lc:'#93C5FD',vc:'#FFF'}}[variant]
   return <div style={{background:vs.bg,border:`1px solid ${vs.border}`,borderRadius:12,padding:'14px 16px',boxShadow:sh,gridColumn:full?'1/-1':undefined}}>
     <div style={{fontSize:10,fontWeight:600,color:vs.lc,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:4}}>{label}</div>
-    <div style={{fontFamily:"'Fraunces',serif",fontSize:large?28:22,color:vs.vc,lineHeight:1,fontWeight:600}}>{value}</div>
+    <div style={{fontFamily:"'Inter',sans-serif",fontSize:large?28:22,color:vs.vc,lineHeight:1,fontWeight:600}}>{value}</div>
     {sub&&<div style={{fontSize:10,color:vs.lc,marginTop:4,opacity:.8}}>{sub}</div>}
   </div>
 }
 
 function NavBtn({active,onClick,icon,label}){
-  return <button onClick={onClick} className="nbtn" style={{padding:'9px 16px',fontSize:12,fontWeight:active?600:500,cursor:'pointer',border:'none',borderRadius:8,background:active?C.navy:'transparent',color:active?'#FFF':C.text2,display:'flex',alignItems:'center',gap:7,transition:'all .15s',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif"}}><span>{icon}</span>{label}</button>
+  return <button onClick={onClick} className="nbtn" style={{padding:'9px 16px',fontSize:12,fontWeight:active?600:500,cursor:'pointer',border:'none',borderRadius:8,background:active?C.navy:'transparent',color:active?'#FFF':C.text2,display:'flex',alignItems:'center',gap:7,transition:'all .15s',whiteSpace:'nowrap',fontFamily:"'Inter',sans-serif"}}><span>{icon}</span>{label}</button>
 }
 
 function Tab({active,onClick,label}){
-  return <button onClick={onClick} className="tbtn" style={{padding:'7px 16px',fontSize:11,fontWeight:active?600:400,cursor:'pointer',border:'none',borderBottom:active?`2px solid ${C.indigo}`:'2px solid transparent',background:'transparent',color:active?C.indigo:C.text3,transition:'all .12s',whiteSpace:'nowrap',fontFamily:"'DM Sans',sans-serif"}}>{label}</button>
+  return <button onClick={onClick} className="tbtn" style={{padding:'7px 16px',fontSize:11,fontWeight:active?600:400,cursor:'pointer',border:'none',borderBottom:active?`2px solid ${C.indigo}`:'2px solid transparent',background:'transparent',color:active?C.indigo:C.text3,transition:'all .12s',whiteSpace:'nowrap',fontFamily:"'Inter',sans-serif"}}>{label}</button>
 }
 
 function SaveBtn({onSave,saved}){
-  return <button onClick={onSave} className="sbtn" style={{padding:'8px 20px',fontSize:12,fontWeight:600,cursor:'pointer',border:'none',borderRadius:8,background:saved?C.greenBg:C.navy,color:saved?C.green:'#FFF',display:'flex',alignItems:'center',gap:7,fontFamily:"'DM Sans',sans-serif",boxShadow:sh,transition:'all .15s'}}>{saved?'✓ Guardado':'💾 Guardar'}</button>
+  return <button onClick={onSave} className="sbtn" style={{padding:'8px 20px',fontSize:12,fontWeight:600,cursor:'pointer',border:'none',borderRadius:8,background:saved?C.greenBg:C.navy,color:saved?C.green:'#FFF',display:'flex',alignItems:'center',gap:7,fontFamily:"'Inter',sans-serif",boxShadow:sh,transition:'all .15s'}}>{saved?'✓ Guardado':'💾 Guardar'}</button>
 }
 
 function PinBtn({pinned,onPin}){
@@ -109,7 +109,7 @@ function Card({title,subtitle,badge,badgeColor,children}){
     <div style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',justifyContent:'space-between',background:C.surface2}}>
       <div>
         {badge&&<span style={{fontSize:10,fontWeight:600,color:bc.c,background:bc.bg,border:`1px solid ${bc.b}`,padding:'2px 8px',borderRadius:20,marginRight:10,letterSpacing:'.05em'}}>{badge}</span>}
-        <span style={{fontFamily:"'Fraunces',serif",fontSize:15,color:C.text,fontWeight:600}}>{title}</span>
+        <span style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:C.text,fontWeight:600}}>{title}</span>
         {subtitle&&<span style={{fontSize:11,color:C.text3,marginLeft:10}}>{subtitle}</span>}
       </div>
     </div>
@@ -125,10 +125,10 @@ function IRow({label,sub,value,onChange,unit,result,resultColor,updated,pinned,o
       {sub&&<span style={{display:'block',fontSize:10,color:C.text3,marginTop:1}}>{sub}</span>}
     </div>
     <div style={{display:'flex',alignItems:'center',gap:5,padding:'0 8px'}}>
-      <input type="number" value={value} onChange={e=>onChange(e.target.value)} disabled={pinned} style={{width:'100%',background:pinned?C.surface2:C.surface,border:`1px solid ${pinned?C.indigo:C.border2}`,borderRadius:7,padding:'5px 8px',fontFamily:"'DM Mono',monospace",fontSize:12,color:pinned?C.indigo:C.text,textAlign:'right',outline:'none',cursor:pinned?'not-allowed':'text'}}/>
+      <input type="number" value={value} onChange={e=>onChange(e.target.value)} disabled={pinned} style={{width:'100%',background:pinned?C.surface2:C.surface,border:`1px solid ${pinned?C.indigo:C.border2}`,borderRadius:7,padding:'5px 8px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:pinned?C.indigo:C.text,textAlign:'right',outline:'none',cursor:pinned?'not-allowed':'text'}}/>
       <span style={{fontSize:10,color:C.text3,whiteSpace:'nowrap',minWidth:26}}>{unit}</span>
     </div>
-    <div style={{textAlign:'right',fontSize:12,color:resultColor||C.text2,fontFamily:"'DM Mono',monospace",fontWeight:500,paddingRight:8}}>{result}</div>
+    <div style={{textAlign:'right',fontSize:12,color:resultColor||C.text2,fontFamily:"'JetBrains Mono',monospace",fontWeight:500,paddingRight:8}}>{result}</div>
     {onPin?<PinBtn pinned={pinned} onPin={onPin}/>:<div/>}
   </div>
 }
@@ -138,7 +138,7 @@ function Bar({label,value,max,color}){
   return <div style={{marginBottom:9}}>
     <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
       <span style={{color:C.text2}}>{label}</span>
-      <span style={{fontFamily:"'DM Mono',monospace",color:C.text,fontWeight:500}}>{fmt(value)}/kg</span>
+      <span style={{fontFamily:"'JetBrains Mono',monospace",color:C.text,fontWeight:500}}>{fmt(value)}/kg</span>
     </div>
     <div style={{height:6,background:C.surface2,borderRadius:3,overflow:'hidden'}}>
       <div style={{height:'100%',width:`${pct}%`,background:color,borderRadius:3,transition:'width .4s'}}/>
@@ -150,7 +150,7 @@ function SI({label,value,variant}){
   const c={green:C.green,amber:C.amber,red:C.red,default:C.text}[variant]||C.text
   return <div>
     <div style={{fontSize:9,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:2}}>{label}</div>
-    <div style={{fontFamily:"'Fraunces',serif",fontSize:18,color:c,fontWeight:600,lineHeight:1}}>{value}</div>
+    <div style={{fontFamily:"'Inter',sans-serif",fontSize:18,color:c,fontWeight:600,lineHeight:1}}>{value}</div>
   </div>
 }
 const Div=()=><div style={{width:1,height:30,background:C.border}}/>
@@ -249,7 +249,7 @@ export default function App(){
 
   const totalRow=(label,val)=><div style={{padding:'10px 20px',background:C.amberBg,display:'grid',gridTemplateColumns:'1fr 160px 105px 36px',alignItems:'center'}}>
     <div style={{fontSize:11,fontWeight:700,color:'#92400E'}}>{label}</div>
-    <div/><div style={{textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:14,color:'#92400E',fontWeight:700,paddingRight:8}}>{fmt(val)}</div><div/>
+    <div/><div style={{textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:'#92400E',fontWeight:700,paddingRight:8}}>{fmt(val)}</div><div/>
   </div>
 
   return <div style={{background:C.bg,minHeight:'100vh'}}>
@@ -258,13 +258,13 @@ export default function App(){
     {/* HEADER */}
     <div style={{background:C.navy,padding:'0 24px',display:'flex',alignItems:'center',justifyContent:'space-between',height:54,boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
       <div style={{display:'flex',alignItems:'center',gap:14}}>
-        <span style={{fontFamily:"'Fraunces',serif",fontSize:18,color:'#FFF',fontWeight:600}}>🥩 D2C Carne Premium</span>
+        <span style={{fontFamily:"'Inter',sans-serif",fontSize:18,color:'#FFF',fontWeight:600}}>🥩 D2C Carne Premium</span>
         <span style={{fontSize:11,color:'#93C5FD',opacity:.8}}>Sol de Julio → Río Cuarto · Mayo 2026</span>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
-        <span style={{fontSize:10,color:'#93C5FD',fontFamily:"'DM Mono',monospace"}}>{saveStatus}</span>
+        <span style={{fontSize:10,color:'#93C5FD',fontFamily:"'JetBrains Mono',monospace"}}>{saveStatus}</span>
         <SaveBtn onSave={handleSave} saved={savedAnim}/>
-        <button onClick={resetAll} style={{padding:'7px 14px',fontSize:11,fontWeight:500,cursor:'pointer',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,background:'transparent',color:'#CBD5E1',fontFamily:"'DM Sans',sans-serif"}}>↺ Restablecer</button>
+        <button onClick={resetAll} style={{padding:'7px 14px',fontSize:11,fontWeight:500,cursor:'pointer',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,background:'transparent',color:'#CBD5E1',fontFamily:"'Inter',sans-serif"}}>↺ Restablecer</button>
       </div>
     </div>
 
@@ -300,13 +300,13 @@ export default function App(){
               {[['Peso vivo',Math.round(v.peso_vivo)+' kg'],null,['Media res',Math.round(kgG)+' kg'],null,['Carne neta',Math.round(kgN)+' kg']].map((item,i)=>
                 item?<div key={i} style={{background:C.surface,border:`1px solid ${C.amberBorder}`,borderRadius:10,padding:'10px 14px',textAlign:'center',boxShadow:sh}}>
                   <div style={{fontSize:10,color:C.text3,marginBottom:3}}>{item[0]}</div>
-                  <div style={{fontFamily:"'Fraunces',serif",fontSize:24,color:C.amber,fontWeight:600,lineHeight:1}}>{item[1]}</div>
+                  <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,color:C.amber,fontWeight:600,lineHeight:1}}>{item[1]}</div>
                   <div style={{fontSize:10,color:C.text3,marginTop:2}}>por animal</div>
                 </div>:<div key={i} style={{textAlign:'center',fontSize:11,color:C.amber,lineHeight:1.5}}>{i===1?'× 58%\ngancho\n→':'× 75%\ncarn.\n→'}</div>
               )}
             </div>
             <div style={{marginTop:12,fontSize:11,color:'#92400E',background:'#FEF3C7',borderRadius:8,padding:'8px 12px'}}>
-              💡 Con valores actuales: <strong style={{fontFamily:"'DM Mono',monospace"}}>{fmt(b1)} ÷ {Math.round(kgN)} kg netos = <span style={{color:C.red}}>{fmt(kgN>0?b1/kgN:0)}/kg</span> solo de campo</strong>
+              💡 Con valores actuales: <strong style={{fontFamily:"'JetBrains Mono',monospace"}}>{fmt(b1)} ÷ {Math.round(kgN)} kg netos = <span style={{color:C.red}}>{fmt(kgN>0?b1/kgN:0)}/kg</span> solo de campo</strong>
             </div>
           </div>
 
@@ -375,7 +375,7 @@ export default function App(){
                   <Bar label="B4 · Comercialización" value={b4kg} max={maxKg} color={C.red}/>
                   <div style={{marginTop:14,padding:12,background:C.greenBg,borderRadius:10,border:`1px solid ${C.greenBorder}`}}>
                     <div style={{fontSize:10,fontWeight:700,color:C.green,marginBottom:3}}>PRECIO MÍNIMO DE EQUILIBRIO</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:24,color:C.greenDark,fontWeight:600}}>{fmt(costoKg)}/kg</div>
+                    <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,color:C.greenDark,fontWeight:600}}>{fmt(costoKg)}/kg</div>
                     <div style={{fontSize:11,color:C.text3,marginTop:3}}>Para 30% de margen: <strong style={{color:C.green}}>{fmt(costoKg/0.7)}/kg</strong></div>
                   </div>
                 </div>
@@ -388,8 +388,8 @@ export default function App(){
                     const ok=res2>=0
                     return <div key={pct} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:6,borderRadius:8,background:pct===70?(ok?C.greenBg:C.redBg):C.surface2,border:`${pct===70?2:1}px solid ${pct===70?(ok?C.greenBorder:C.redBorder):C.border}`}}>
                       <span style={{fontSize:12,fontWeight:pct===70?700:400,color:C.text2}}>{pct}% vendido</span>
-                      <span style={{fontSize:11,color:C.text3,fontFamily:"'DM Mono',monospace"}}>{Math.round(kgV)} kg</span>
-                      <span style={{fontFamily:"'Fraunces',serif",fontSize:14,fontWeight:700,color:ok?C.green:C.red}}>{fmt(res2)}</span>
+                      <span style={{fontSize:11,color:C.text3,fontFamily:"'JetBrains Mono',monospace"}}>{Math.round(kgV)} kg</span>
+                      <span style={{fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:700,color:ok?C.green:C.red}}>{fmt(res2)}</span>
                     </div>
                   })}
                   <div style={{marginTop:8,fontSize:11,color:C.text3,background:C.surface2,borderRadius:8,padding:'8px 12px'}}>⚠ El 70% es el KPI crítico: por debajo el modelo no es viable con precios de mayo 2026.</div>
@@ -409,8 +409,8 @@ export default function App(){
                     ].map(([label,v1,v2,variant])=>(
                       <tr key={label} style={{borderBottom:`1px solid ${C.border}`}}>
                         <td style={{padding:'10px 12px',fontSize:12,color:C.text}}>{label}</td>
-                        <td style={{padding:'10px 12px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.green}}>{v1}</td>
-                        <td style={{padding:'10px 12px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.red,fontWeight:700}}>{v2}</td>
+                        <td style={{padding:'10px 12px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green}}>{v1}</td>
+                        <td style={{padding:'10px 12px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.red,fontWeight:700}}>{v2}</td>
                         <td style={{padding:'10px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:20,background:variant==='red'?C.redBg:C.amberBg,color:variant==='red'?C.red:C.amber}}>▲ Subió</span></td>
                       </tr>
                     ))}
@@ -423,7 +423,7 @@ export default function App(){
 
         {/* RIGHT PANEL */}
         <div style={{background:C.surface,borderLeft:`1px solid ${C.border}`,padding:18,position:'sticky',top:0,maxHeight:'calc(100vh - 172px)',overflowY:'auto',boxShadow:'-2px 0 8px rgba(0,0,0,0.04)'}}>
-          <div style={{fontFamily:"'Fraunces',serif",fontSize:15,color:C.navy,fontWeight:600,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>📊 Tablero en tiempo real</div>
+          <div style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:C.navy,fontWeight:600,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>📊 Tablero en tiempo real</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:14}}>
             <Kpi label="Kg netos / semana" value={Math.round(kgNS)+' kg'} sub={v.animales_semana+' novillos · ×0.435'} variant="green" full/>
             <Kpi label="Costo / semana" value={fmt(totS)} variant="amber"/>
@@ -440,17 +440,17 @@ export default function App(){
             <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Precio de venta promedio/kg</div>
             <div style={{display:'flex',alignItems:'center',gap:5,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:'7px 11px',marginBottom:5}}>
               <span style={{color:C.text3,fontSize:13}}>$</span>
-              <input type="number" value={v.precio_venta} onChange={e=>set('precio_venta',e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'Fraunces',serif",fontSize:20,color:C.navy,width:'100%',outline:'none',textAlign:'right',fontWeight:600}}/>
+              <input type="number" value={v.precio_venta} onChange={e=>set('precio_venta',e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'Inter',sans-serif",fontSize:20,color:C.navy,width:'100%',outline:'none',textAlign:'right',fontWeight:600}}/>
               <span style={{color:C.text3,fontSize:11}}>/kg</span>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
               <div style={{padding:'8px 10px',background:mv==='green'?C.greenBg:mv==='amber'?C.amberBg:C.redBg,borderRadius:8,border:`1px solid ${mv==='green'?C.greenBorder:mv==='amber'?C.amberBorder:C.redBorder}`}}>
                 <div style={{fontSize:9,color:C.text3,marginBottom:2}}>Margen/kg</div>
-                <div style={{fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:mv==='green'?C.green:mv==='amber'?C.amber:C.red}}>{fmt(margenKg)}</div>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700,color:mv==='green'?C.green:mv==='amber'?C.amber:C.red}}>{fmt(margenKg)}</div>
               </div>
               <div style={{padding:'8px 10px',background:mv==='green'?C.greenBg:mv==='amber'?C.amberBg:C.redBg,borderRadius:8,border:`1px solid ${mv==='green'?C.greenBorder:mv==='amber'?C.amberBorder:C.redBorder}`}}>
                 <div style={{fontSize:9,color:C.text3,marginBottom:2}}>Margen %</div>
-                <div style={{fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:mv==='green'?C.green:mv==='amber'?C.amber:C.red}}>{fmtPct(margenPct)}</div>
+                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700,color:mv==='green'?C.green:mv==='amber'?C.amber:C.red}}>{fmtPct(margenPct)}</div>
               </div>
             </div>
           </div>
@@ -459,14 +459,14 @@ export default function App(){
             {[['Ingresos brutos',fmt(ingB)],['Costos variables',fmt(cvS)],['Costos fijos sem.',fmt(cfS)]].map(([l,val])=>(
               <div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:11,padding:'2px 0'}}>
                 <span style={{color:C.text2}}>{l}</span>
-                <span style={{fontFamily:"'DM Mono',monospace",color:C.text}}>{val}</span>
+                <span style={{fontFamily:"'JetBrains Mono',monospace",color:C.text}}>{val}</span>
               </div>
             ))}
             <div style={{borderTop:`1px solid ${rv==='green'?C.greenBorder:C.redBorder}`,marginTop:8,paddingTop:8}}>
               {[['Resultado semana',fmt(resSem)],['Resultado mes',fmt(resMes)]].map(([l,val])=>(
                 <div key={l} style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                   <span style={{fontSize:12,fontWeight:600,color:C.text}}>{l}</span>
-                  <span style={{fontFamily:"'Fraunces',serif",fontSize:15,fontWeight:600,color:rv==='green'?C.green:C.red}}>{val}</span>
+                  <span style={{fontFamily:"'Inter',sans-serif",fontSize:15,fontWeight:600,color:rv==='green'?C.green:C.red}}>{val}</span>
                 </div>
               ))}
             </div>
@@ -504,20 +504,20 @@ export default function App(){
                       {c.nombre}
                     </td>
                     <td style={{padding:'7px 14px',textAlign:'right'}}>
-                      <input type="number" value={c.kg} onChange={e=>setMix(i,'kg',e.target.value)} style={{width:55,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                      <input type="number" value={c.kg} onChange={e=>setMix(i,'kg',e.target.value)} style={{width:55,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
                     </td>
                     <td style={{padding:'7px 14px',textAlign:'right'}}>
-                      <input type="number" value={c.precio} onChange={e=>setMix(i,'precio',e.target.value)} style={{width:80,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                      <input type="number" value={c.precio} onChange={e=>setMix(i,'precio',e.target.value)} style={{width:80,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
                     </td>
-                    <td style={{padding:'7px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:600,color:C.green}}>{fmt(ing)}</td>
+                    <td style={{padding:'7px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:C.green}}>{fmt(ing)}</td>
                     <td style={{padding:'7px 14px',textAlign:'right',fontSize:11,color:C.text3}}>{pct.toFixed(1)}%</td>
                   </tr>
                 })}
                 <tr style={{background:C.surface2,borderTop:`2px solid ${C.border2}`}}>
                   <td style={{padding:'9px 14px',fontSize:12,fontWeight:700,color:C.text}}>TOTAL</td>
-                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.green}}>{Math.round(mixTotKg)} kg</td>
-                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.amber}}>{fmt(mixPrecio)}/kg</td>
-                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontWeight:700,color:C.green}}>{fmt(mixTotIng)}</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.green}}>{Math.round(mixTotKg)} kg</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.amber}}>{fmt(mixPrecio)}/kg</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.green}}>{fmt(mixTotIng)}</td>
                   <td style={{padding:'9px 14px',textAlign:'right',fontSize:11,color:C.text3}}>100%</td>
                 </tr>
               </tbody>
@@ -540,7 +540,7 @@ export default function App(){
                   <div key={label} style={{marginBottom:10}}>
                     <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
                       <span style={{color:C.text2}}>{label}</span>
-                      <span style={{fontFamily:"'DM Mono',monospace",color:C.text,fontWeight:500}}>{mixTotIng>0?((ing/mixTotIng)*100).toFixed(0):0}%</span>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:C.text,fontWeight:500}}>{mixTotIng>0?((ing/mixTotIng)*100).toFixed(0):0}%</span>
                     </div>
                     <div style={{height:6,background:C.surface2,borderRadius:3,overflow:'hidden'}}>
                       <div style={{height:'100%',width:mixTotIng>0?`${(ing/mixTotIng)*100}%`:'0%',background:color,borderRadius:3,transition:'width .4s'}}/>
@@ -574,7 +574,7 @@ export default function App(){
               <div key={key}>
                 <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
                 <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px',boxShadow:sh}}>
-                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:90,outline:'none',textAlign:'right'}}/>
+                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:90,outline:'none',textAlign:'right'}}/>
                   <span style={{fontSize:11,color:C.text3}}>{unit}</span>
                 </div>
               </div>
@@ -590,12 +590,12 @@ export default function App(){
                   <tr key={i} className="rh" style={{borderBottom:`1px solid ${C.border}`,background:ac>=0?'rgba(22,163,74,.04)':'transparent'}}>
                     <td style={{padding:'9px 12px',fontSize:12,color:C.text,fontWeight:500}}>{mes}</td>
                     <td style={{padding:'9px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:20,background:pct>=80?C.greenBg:pct>=60?C.amberBg:C.redBg,color:pct>=80?C.green:pct>=60?C.amber:C.red}}>{pct}%</span></td>
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text2}}>{Math.round(kgNS*(pct/100)*4.33)} kg</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text}}>{fmt(ing)}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text}}>{fmt(cv2)}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:11,color:C.text}}>{fmt(costoFM)}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,color:res>=0?C.green:C.red}}>{fmt(res)}</td>
-                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:700,color:ac>=0?C.green:C.red}}>{fmt(ac)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text2}}>{Math.round(kgNS*(pct/100)*4.33)} kg</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text}}>{fmt(ing)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text}}>{fmt(cv2)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text}}>{fmt(costoFM)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:res>=0?C.green:C.red}}>{fmt(res)}</td>
+                    <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:ac>=0?C.green:C.red}}>{fmt(ac)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -608,12 +608,12 @@ export default function App(){
               {[['Cámara frigorífica (usada buen estado)','$6M – $8M'],['Envasadora al vacío doble cámara','$1.5M – $2.5M'],['Sierra + mesa acero inox.','$800k – $1.2M'],['Balanza + impresora etiquetas','$600k – $900k'],['Bolsas isotérmicas + equipo delivery','$400k – $600k'],['Adecuación edilicia SENASA','$2M – $5M'],['Habilitación + tramitación','$500k – $1M'],['Capital de trabajo (3 meses)','$8M – $12M']].map(([label,val])=>(
                 <div key={label} style={{display:'flex',justifyContent:'space-between',padding:'9px 0',borderBottom:`1px solid ${C.border}`}}>
                   <span style={{fontSize:12,color:C.text2}}>{label}</span>
-                  <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:600,color:C.amber}}>{val}</span>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:C.amber}}>{val}</span>
                 </div>
               ))}
               <div style={{display:'flex',justifyContent:'space-between',padding:'12px 0'}}>
                 <span style={{fontSize:13,fontWeight:700,color:C.text}}>TOTAL ESTIMADO</span>
-                <span style={{fontFamily:"'Fraunces',serif",fontSize:18,fontWeight:600,color:C.red}}>$20M – $31M</span>
+                <span style={{fontFamily:"'Inter',sans-serif",fontSize:18,fontWeight:600,color:C.red}}>$20M – $31M</span>
               </div>
             </div>
           </Card>
@@ -658,9 +658,9 @@ export default function App(){
                 {[['Ene–Feb','0','12/mes','12','100% comprados','Costo máximo','red'],['Mar–Abr','8–12','0–4','12','Mix (cabeza parición)','Propios empiezan','amber'],['May–Jun','15–20','0','12','100% propios','★ Mejor margen','green'],['Jul–Sep','10–15','0–2','12','Mayoría propios','Margen alto','green'],['Oct–Nov','3–5','7–9','12','Mix','Compras parcial','amber'],['Dic','0','12','12','100% comprados','Margen bajo','red']].map(([mes,propios,compras,feedlot,origen,estado,variant])=>(
                   <tr key={mes} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:'10px 14px',fontSize:12,fontWeight:600,color:C.text}}>{mes}</td>
-                    <td style={{padding:'10px 14px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.green,fontWeight:600}}>{propios}</td>
-                    <td style={{padding:'10px 14px',fontFamily:"'DM Mono',monospace",fontSize:12,color:C.amber,fontWeight:600}}>{compras}</td>
-                    <td style={{padding:'10px 14px',fontFamily:"'DM Mono',monospace",fontSize:13,color:C.navy,fontWeight:700}}>{feedlot}</td>
+                    <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green,fontWeight:600}}>{propios}</td>
+                    <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.amber,fontWeight:600}}>{compras}</td>
+                    <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:C.navy,fontWeight:700}}>{feedlot}</td>
                     <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>{origen}</td>
                     <td style={{padding:'10px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:20,background:variant==='green'?C.greenBg:variant==='amber'?C.amberBg:C.redBg,color:variant==='green'?C.green:variant==='amber'?C.amber:C.red}}>{estado}</span></td>
                   </tr>
@@ -697,7 +697,7 @@ export default function App(){
               <div key={key}>
                 <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
                 <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px'}}>
-                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} step={key==='inq_kg'?'.1':'1'} style={{background:'transparent',border:'none',fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:90,outline:'none',textAlign:'right'}}/>
+                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} step={key==='inq_kg'?'.1':'1'} style={{background:'transparent',border:'none',fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:90,outline:'none',textAlign:'right'}}/>
                   <span style={{fontSize:11,color:C.text3}}>{unit}</span>
                 </div>
               </div>
@@ -710,7 +710,7 @@ export default function App(){
               <div key={card.title} style={{background:C.surface,border:`1px solid ${card.rec?C.greenBorder:C.border}`,borderRadius:14,overflow:'hidden',boxShadow:sh}}>
                 <div style={{padding:'12px 20px',borderBottom:`1px solid ${C.border}`,background:card.rec?C.greenBg:C.surface2,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                   <div>
-                    <span style={{fontFamily:"'Fraunces',serif",fontSize:15,color:C.text,fontWeight:600}}>{card.title}</span>
+                    <span style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:C.text,fontWeight:600}}>{card.title}</span>
                     <span style={{fontSize:11,color:C.text3,marginLeft:10}}>{card.sub}</span>
                   </div>
                   {card.rec&&<span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:20,background:C.greenBg,border:`1px solid ${C.greenBorder}`,color:C.green}}>Recomendado</span>}
@@ -719,12 +719,12 @@ export default function App(){
                   {card.rows.map(([label,val,variant])=>(
                     <div key={label} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
                       <span style={{fontSize:12,color:C.text2}}>{label}</span>
-                      <span style={{fontFamily:"'DM Mono',monospace",fontSize:12,fontWeight:600,color:variant==='green'?C.green:variant==='red'?C.red:variant==='amber'?C.amber:C.text}}>{val}</span>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:variant==='green'?C.green:variant==='red'?C.red:variant==='amber'?C.amber:C.text}}>{val}</span>
                     </div>
                   ))}
                   <div style={{marginTop:14,padding:12,background:card.rec?C.greenBg:C.amberBg,borderRadius:10,border:`1px solid ${card.rec?C.greenBorder:C.amberBorder}`}}>
                     <div style={{fontSize:10,color:C.text3,marginBottom:2}}>{card.foot[0]}</div>
-                    <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:card.foot[2]==='green'?C.green:C.amber,fontWeight:600}}>{card.foot[1]}</div>
+                    <div style={{fontFamily:"'Inter',sans-serif",fontSize:22,color:card.foot[2]==='green'?C.green:C.amber,fontWeight:600}}>{card.foot[1]}</div>
                   </div>
                 </div>
               </div>
@@ -737,7 +737,7 @@ export default function App(){
               <div key={key}>
                 <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
                 <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px'}}>
-                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} step={step} style={{background:'transparent',border:'none',fontFamily:"'DM Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:80,outline:'none',textAlign:'right'}}/>
+                  <input type="number" value={v[key]} onChange={e=>set(key,e.target.value)} step={step} style={{background:'transparent',border:'none',fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:80,outline:'none',textAlign:'right'}}/>
                   <span style={{fontSize:11,color:C.text3}}>{unit}</span>
                 </div>
               </div>
@@ -791,7 +791,7 @@ export default function App(){
                   <tr key={cat+peso} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
                     <td style={{padding:'9px 14px',fontSize:12,color:C.text}}>{cat}</td>
                     <td style={{padding:'9px 14px',fontSize:12,color:C.text2}}>{peso}</td>
-                    <td style={{padding:'9px 14px',fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:v==='green'?C.green:v==='amber'?C.amber:C.text}}>{precio}</td>
+                    <td style={{padding:'9px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700,color:v==='green'?C.green:v==='amber'?C.amber:C.text}}>{precio}</td>
                   </tr>
                 ))}
               </tbody>
@@ -804,7 +804,7 @@ export default function App(){
                 {[['Picada común','$10.381'],['Asado de tira','$18.091'],['Nalga','$21.559'],['Vacío','$22.327'],['Cuadril','$21.357'],['Peceto','$23.391'],['Promedio ponderado','$18.559']].map(([corte,precio])=>(
                   <tr key={corte} className="rh" style={{borderBottom:`1px solid ${C.border}`,background:corte==='Promedio ponderado'?C.amberBg:'transparent'}}>
                     <td style={{padding:'9px 14px',fontSize:12,color:C.text,fontWeight:corte==='Promedio ponderado'?700:400}}>{corte}</td>
-                    <td style={{padding:'9px 14px',fontFamily:"'DM Mono',monospace",fontSize:13,fontWeight:700,color:corte==='Promedio ponderado'?C.amber:C.text}}>{precio}</td>
+                    <td style={{padding:'9px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:13,fontWeight:700,color:corte==='Promedio ponderado'?C.amber:C.text}}>{precio}</td>
                   </tr>
                 ))}
               </tbody>
@@ -818,7 +818,7 @@ export default function App(){
             <tbody>
               {[['1','Consulta inicial SENASA + bromatólogo Río Cuarto','Semana 1','Todo','Productor','red'],['2','Validar 50 compradores comprometidos (pre-venta)','Semanas 1–4','Inversión','Productor','red'],['3','Definir situación impositiva (monotributo vs. RI)','Semana 2','Finanzas','Contador','amber'],['4','Acordar servicio de faena con frigorífico en ruta','Mes 1','Logística','Productor','amber'],['5','Firmar local + iniciar obra de adecuación SENASA','Mes 1–2','Operación','Productor','amber'],['6','Comprar equipos (cámara, envasadora, sierra)','Mes 2','Producción','Productor','amber'],['7','Contratar despostador + sistema de trazabilidad','Mes 2–3','Calidad','Productor','blue'],['8','Lanzar Instagram + WhatsApp Business','Mes 1','Ventas','Digital','blue'],['9','Contratar responsable ventas digital (part-time)','Mes 2','Demanda','Productor','blue'],['10','Primera faena piloto (1 novillo) + degustación chefs','Mes 3–4','Marca','Todo','green'],['11','Lanzamiento e-commerce + primer ciclo semanal','Mes 4–5','Escala','Todo','green'],['12','Negociar canje arriendo con inquilino en terneros','Antes nov-26','Costos','Productor','green']].map(([num,accion,horizonte,bloquea,resp,variant])=>(
                 <tr key={num} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
-                  <td style={{padding:'10px 14px',fontFamily:"'Fraunces',serif",fontSize:16,fontWeight:600,color:C.navy}}>{num}</td>
+                  <td style={{padding:'10px 14px',fontFamily:"'Inter',sans-serif",fontSize:16,fontWeight:600,color:C.navy}}>{num}</td>
                   <td style={{padding:'10px 14px',fontSize:12,color:C.text}}>{accion}</td>
                   <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>{horizonte}</td>
                   <td style={{padding:'10px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:20,background:variant==='red'?C.redBg:variant==='amber'?C.amberBg:variant==='green'?C.greenBg:C.blueBg,color:variant==='red'?C.red:variant==='amber'?C.amber:variant==='green'?C.green:C.blue}}>{bloquea}</span></td>
