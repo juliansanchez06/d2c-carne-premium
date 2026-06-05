@@ -25,16 +25,27 @@ const DEFAULTS = {
   precio_venta:20000,
   s_dia:500,s_meses:7,s_anim:144,s_gdp:0.65,s_gdpsin:0.25,s_pnov:4400,
   inq_animales:80,inq_kg:5.5,inq_precio:4400,inq_precio_t:6580,inq_meses:12,
-  cj_inversion:15000000,cj_ramp1:30,cj_ramp2:55,cj_ramp3:75,cj_ramp4:90,
+  cj_inversion:5000000,cj_ramp1:30,cj_ramp2:55,cj_ramp3:75,cj_ramp4:90,
+  fz_modalidad:'canje',
+  fz_precio_nopremium:8000,
+  fz_costo_servicio:100000,
+  fz_flete_premium:35000,
   pinned:{},
   mix:[
-    {nombre:'Lomo',kg:8,precio:28000},{nombre:'Bife de chorizo',kg:12,precio:22000},
-    {nombre:'Cuadril',kg:18,precio:22000},{nombre:'Vacío',kg:15,precio:23000},
-    {nombre:'Nalga',kg:16,precio:22000},{nombre:'Peceto',kg:7,precio:24000},
-    {nombre:'Tapa de asado',kg:8,precio:18000},{nombre:'Matambre',kg:6,precio:19000},
-    {nombre:'Bola de lomo',kg:8,precio:20000},{nombre:'Asado de tira',kg:35,precio:18500},
-    {nombre:'Paleta',kg:18,precio:17500},{nombre:'Tortuguita',kg:10,precio:17000},
-    {nombre:'Picada / recortes',kg:15,precio:12000},{nombre:'Falda',kg:10,precio:12000},
+    {nombre:'Lomo',kg:6,precio:35000,premium:true},
+    {nombre:'Bife de chorizo (ancho)',kg:11,precio:30000,premium:true},
+    {nombre:'Cuadril',kg:16,precio:28000,premium:true},
+    {nombre:'Vacío',kg:13,precio:29000,premium:true},
+    {nombre:'Nalga',kg:15,precio:27000,premium:true},
+    {nombre:'Peceto',kg:6,precio:28000,premium:true},
+    {nombre:'Bola de lomo',kg:6,precio:26000,premium:true},
+    {nombre:'Tapa de asado',kg:8,precio:19000,premium:false},
+    {nombre:'Matambre',kg:6,precio:21000,premium:false},
+    {nombre:'Asado de tira',kg:35,precio:18500,premium:false},
+    {nombre:'Paleta',kg:18,precio:17500,premium:false},
+    {nombre:'Tortuguita',kg:10,precio:17000,premium:false},
+    {nombre:'Picada / recortes',kg:20,precio:12000,premium:false},
+    {nombre:'Falda',kg:10,precio:12000,premium:false},
   ]
 }
 
@@ -419,7 +430,7 @@ export default function App(){
   },[autoSave])
 
   const setMix=useCallback((i,field,val)=>{
-    setVals(p=>{const m=p.mix.map((c,idx)=>idx===i?{...c,[field]:parseFloat(val)||0}:c);const n={...p,mix:m};autoSave(n);return n})
+    setVals(p=>{const m=p.mix.map((c,idx)=>idx===i?{...c,[field]:field==='premium'?val:(parseFloat(val)||0)}:c);const n={...p,mix:m};autoSave(n);return n})
   },[autoSave])
 
   const resetAll=useCallback(()=>{
@@ -430,35 +441,81 @@ export default function App(){
   const v=vals
   const pin=k=>!!(v.pinned?.[k])
 
-  // Calculations
+  // ── Calculations · MODELO DOS CANALES (El Retiro premium + Frideza no-premium) ──
   const kgG=v.peso_vivo*(v.rinde_gancho/100)
-  const kgN=kgG*(v.rinde_carnicero/100)
-  const kgNS=kgN*v.animales_semana
+  const kgN=kgG*(v.rinde_carnicero/100)           // carne neta total / animal
+  const anim=v.animales_semana
+
+  // Separar premium (vos) vs no-premium (Frideza)
+  const kgPremium  = v.mix.filter(c=>c.premium).reduce((a,c)=>a+c.kg,0)   // kg premium/animal
+  const kgNoPrem   = v.mix.filter(c=>!c.premium).reduce((a,c)=>a+c.kg,0)  // kg Frideza/animal
+  const kgPremiumS = kgPremium*anim                                       // kg premium/semana
+  const kgNoPremS  = kgNoPrem*anim
+
+  // Valor del no-premium que Frideza comercializa (canje / venta)
+  const valorNoPremium  = kgNoPrem*v.fz_precio_nopremium       // $/animal que vale lo de Frideza
+  const valorNoPremiumS = valorNoPremium*anim
+
+  // Bloque 1 — costo del animal en campo
   const b1=v.b1_ternero+v.b1_supl+v.b1_racion+v.b1_sanidad+v.b1_personal
-  const b1S=b1*v.animales_semana
-  const b2r=v.b2_flete1+v.b2_faena+v.b2_flete2+v.b2_guias+v.b2_iibb+v.b2_contingencia-v.b2_recupero
-  const b2S=b2r*v.animales_semana
+  const b1S=b1*anim
+
+  // Bloque 2 — logística. En modelo Frideza el canje cubre faena+desposte+envasado.
+  // Solo pagás fletes (hacienda→Frideza y premium envasado→Río Cuarto).
+  const b2r = v.fz_modalidad==='canje'
+    ? (v.b2_flete1 + v.fz_flete_premium + v.b2_guias)   // canje: solo fletes + guías
+    : (v.b2_flete1+v.b2_faena+v.b2_flete2+v.b2_guias+v.b2_iibb+v.b2_contingencia-v.b2_recupero)
+  const b2S=b2r*anim
+
+  // ── MÉTODO 2: costo NETO del animal asignado a premium ──
+  // El no-premium no es costo, es sub-producto con valor que reduce el costo neto.
+  // En canje: Frideza se queda el no-premium → su valor cubre el costo del servicio.
+  const costoServicioCanje = v.fz_modalidad==='canje' ? v.fz_costo_servicio : 0
+  const costoNetoAnimal = (b1 + b2r) - valorNoPremium + costoServicioCanje
+  const costoNetoAnimalS = costoNetoAnimal*anim
+
+  // Bloque 3 — operativo local. Con Frideza envasando, solo necesitás depósito chico.
   const b3m=v.b3_alquiler+v.b3_luz+v.b3_sueldo1+v.b3_sueldo2+v.b3_insumos+v.b3_amort+v.b3_mant+v.b3_seguros+v.b3_obra
   const b3S=b3m/4.33
+
+  // Bloque 4 — comercialización D2C (igual)
   const mktS=(v.b4_mkt+v.b4_web+v.b4_ventas)/4.33
   const packS=v.b4_pack*v.b4_pedidos
   const delS=v.b4_delivery*v.b4_pedidos
-  const ingB=v.precio_venta*kgNS
-  const mpS=ingB*(v.b4_mp/100)
+
+  // Mix premium: ingreso real basado en cortes premium
+  const mixTotKg=v.mix.reduce((a,c)=>a+c.kg,0)                            // todos los kg
+  const ingPremiumS = v.mix.filter(c=>c.premium).reduce((a,c)=>a+c.kg*c.precio*anim,0)
+  const mixPrecioPrem = kgPremium>0 ? ingPremiumS/kgPremium/anim : 0      // $/kg ponderado premium
+  const precioVentaPrem = mixPrecioPrem                                   // precio efectivo premium
+
+  // Ingreso y comisión MP sobre ingreso premium real (FIX bug #2)
+  const ingB = ingPremiumS
+  const mpS  = ingB*(v.b4_mp/100)
+
+  // Costos: variables (animal neto + pack + del) y fijos (b3 + mkt) — FIX bug #1
+  const cvS = costoNetoAnimalS + packS + delS
+  const cfS = b3S + mktS
+  const totS = cvS + cfS + mpS
+
+  // Costo por kg PREMIUM (lo único que vendés)
+  const costoKg = kgPremiumS>0 ? totS/kgPremiumS : 0
+  const margenKg = precioVentaPrem - costoKg
+  const margenPct = precioVentaPrem>0 ? (margenKg/precioVentaPrem)*100 : 0
+  const resSem = ingB-totS, resMes=resSem*4.33
+
+  // Breakdown costo/kg premium
+  const b1kg=kgPremiumS>0?costoNetoAnimalS/kgPremiumS:0
+  const b3kg=kgPremiumS>0?b3S/kgPremiumS:0
+  const b4kg=kgPremiumS>0?(packS+delS+mktS+mpS)/kgPremiumS:0
+  const maxKg=Math.max(b1kg,b3kg,b4kg,1)
+
+  // compat con UI vieja del módulo Mix
+  const kgNS=kgPremiumS
+  const mixTotIng=ingPremiumS
+  const mixPrecio=mixPrecioPrem
+  const b2kg=0
   const b4S=packS+delS+mktS+mpS
-  const cvS=(b1+b2r)*v.animales_semana
-  const cfS=b3S+mktS+packS+delS
-  const totS=cvS+cfS+mpS
-  const costoKg=kgNS>0?totS/kgNS:0
-  const margenKg=v.precio_venta-costoKg
-  const margenPct=v.precio_venta>0?(margenKg/v.precio_venta)*100:0
-  const resSem=ingB-totS, resMes=resSem*4.33
-  const b1kg=kgNS>0?b1S/kgNS:0, b2kg=kgNS>0?b2S/kgNS:0
-  const b3kg=kgNS>0?b3S/kgNS:0, b4kg=kgNS>0?b4S/kgNS:0
-  const maxKg=Math.max(b1kg,b2kg,b3kg,b4kg,1)
-  const mixTotKg=v.mix.reduce((a,c)=>a+c.kg,0)
-  const mixTotIng=v.mix.reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0)
-  const mixPrecio=mixTotKg>0?mixTotIng/mixTotKg/v.animales_semana:0
   const sDias=v.s_meses*30, sCostoA=v.s_dia*sDias
   const sKgEx=(v.s_gdp-v.s_gdpsin)*sDias, sValEx=sKgEx*v.s_pnov
   const sRes=sValEx+(v.s_gdpsin>0?sKgEx/v.s_gdpsin:0)*80-sCostoA
@@ -518,13 +575,13 @@ export default function App(){
     {/* ══ FINANCIERO ══ */}
     {mod==='fin'&&<>
       <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
-        <SI label="Kg netos/sem" value={Math.round(kgNS)+' kg'} variant="green"/>
-        <Div/><SI label="Costo/kg" value={fmt(costoKg)} variant="amber"/>
-        <Div/><SI label="Precio venta/kg" value={fmt(v.precio_venta)}/>
+        <SI label="Kg premium/sem" value={Math.round(kgPremiumS)+' kg'} variant="green"/>
+        <Div/><SI label="Costo/kg premium" value={fmt(costoKg)} variant="amber"/>
+        <Div/><SI label="Precio premium/kg" value={fmt(precioVentaPrem)}/>
         <Div/><SI label="Margen bruto" value={fmtPct(margenPct)} variant={mv}/>
         <Div/><SI label="Resultado/mes" value={fmt(resMes)} variant={rv}/>
         <div style={{marginLeft:'auto',display:'flex',gap:4}}>
-          {[['costos','Campo'],['faena','Faena'],['local','Local'],['comercial','Comercial'],['resumen','Resultado']].map(([id,label])=>(
+          {[['costos','Campo'],['frideza','Frideza'],['local','Local'],['comercial','Comercial'],['resumen','Resultado']].map(([id,label])=>(
             <Tab key={id} active={finTab===id} onClick={()=>setFinTab(id)} label={label}/>
           ))}
         </div>
@@ -567,18 +624,48 @@ export default function App(){
             </Card>
           </>}
 
-          {finTab==='faena'&&<Card title="Faena y logística" badge="Bloque 2" badgeColor="amber">
-            {IR('Flete campo → frigorífico origen (~180 km)','b2_flete1','$/cab','Vehículo propio o contratado',true)}
-            {IR('Faena maquila (SENASA + pesaje + cámara 48h)','b2_faena','$/cab','Frigorífico norte de Córdoba o Frías',true)}
-            {IR('Flete refrigerado → Río Cuarto (~500 km compartido)','b2_flete2','$/cab','Camión frío, carga compartida',true)}
-            {IR('Guías, DT electrónico, certificados SENASA','b2_guias','$/cab',null,true)}
-            <IRow label="Recupero menudencias (DESCUENTA el costo)" sub="Hígado, riñón, lengua, mondongo" value={v.b2_recupero} onChange={val=>set('b2_recupero',val)} unit="$/cab" result={'−'+fmt(v.b2_recupero)} resultColor={C.green} pinned={pin('b2_recupero')} onPin={()=>togglePin('b2_recupero')}/>
-            {IR('IIBB + impuestos sobre faena','b2_iibb','$/cab',null,true)}
-            {IR('Reserva contingencia DFD / pérdida de lote','b2_contingencia','$/cab','⚠ Nuevo — 1 animal con corte oscuro cada ~8 semanas',true)}
-            {totalRow('TOTAL BLOQUE 2 / semana',b2S)}
-          </Card>}
+          {finTab==='frideza'&&<>
+            <Card title="Acuerdo con Frideza" badge="Modelo dos canales" badgeColor="blue">
+              <div style={{padding:'4px 0'}}>
+                {IR('Flete campo → Frideza (~180 km)','b2_flete1','$/cab','Hacienda en pie al frigorífico',true)}
+                {IR('Flete premium envasados → Río Cuarto','fz_flete_premium','$/cab','Solo los cortes premium ya envasados al vacío',true)}
+                {IR('Guías, DT electrónico, certificados','b2_guias','$/cab',null,false)}
+                {IR('Costo servicio canje (faena+desposte+envasado)','fz_costo_servicio','$/cab','Lo cubre el no-premium que se queda Frideza',false)}
+                {IR('Precio asignado al no-premium','fz_precio_nopremium','$/kg','Valor mayorista de lo que comercializa Frideza',false)}
+              </div>
+            </Card>
+            <Card title="Reparto de la res" badge="Premium vs No-Premium" badgeColor="green">
+              <div style={{padding:'16px 20px'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
+                  <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:'14px 16px'}}>
+                    <div style={{fontSize:10,fontWeight:700,color:C.green,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>EL RETIRO (vos)</div>
+                    <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,fontWeight:700,color:C.greenDark}}>{kgPremium.toFixed(0)} kg</div>
+                    <div style={{fontSize:11,color:C.text3,marginTop:2}}>{kgN>0?Math.round(kgPremium/kgN*100):0}% de la carne · {v.mix.filter(c=>c.premium).length} cortes premium</div>
+                    <div style={{marginTop:8,fontSize:12,color:C.text2}}>Ingreso/sem: <strong style={{color:C.green}}>{fmt(ingPremiumS)}</strong></div>
+                  </div>
+                  <div style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:12,padding:'14px 16px'}}>
+                    <div style={{fontSize:10,fontWeight:700,color:C.text2,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>FRIDEZA</div>
+                    <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,fontWeight:700,color:C.text}}>{kgNoPrem.toFixed(0)} kg</div>
+                    <div style={{fontSize:11,color:C.text3,marginTop:2}}>{kgN>0?Math.round(kgNoPrem/kgN*100):0}% de la carne · {v.mix.filter(c=>!c.premium).length} cortes</div>
+                    <div style={{marginTop:8,fontSize:12,color:C.text2}}>Valor canje/sem: <strong>{fmt(valorNoPremiumS)}</strong></div>
+                  </div>
+                </div>
+                <div style={{background:C.blueBg,border:`1px solid ${C.blueBorder}`,borderRadius:10,padding:'12px 16px'}}>
+                  <div style={{fontSize:12,fontWeight:600,color:C.blue,marginBottom:8}}>💡 Método 2 — Costo neto del animal (correcto)</div>
+                  <div style={{fontSize:12,color:C.text2,lineHeight:1.9}}>
+                    Costo animal (campo + fletes): <strong style={{fontFamily:"'JetBrains Mono',monospace"}}>{fmt(b1+b2r)}</strong><br/>
+                    − Valor del no-premium (Frideza): <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.green}}>−{fmt(valorNoPremium)}</strong><br/>
+                    + Costo servicio canje: <strong style={{fontFamily:"'JetBrains Mono',monospace"}}>{fmt(costoServicioCanje)}</strong><br/>
+                    <span style={{borderTop:`1px solid ${C.blueBorder}`,display:'block',marginTop:6,paddingTop:6}}>
+                    = Costo NETO asignado a premium: <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.navy,fontSize:14}}>{fmt(costoNetoAnimal)}/animal</strong></span>
+                    <span style={{display:'block',marginTop:4}}>Sobre {kgPremium.toFixed(0)} kg premium = <strong style={{color:C.navy}}>{fmt(kgPremium>0?costoNetoAnimal/kgPremium:0)}/kg</strong> solo de animal</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </>}
 
-          {finTab==='local'&&<Card title="Costo operativo — Centro Río Cuarto" badge="Bloque 3" badgeColor="amber">
+          {finTab==='local'&&<Card title="Costo operativo — Depósito Río Cuarto" badge="Bloque 3" badgeColor="amber">
             {[['Alquiler del local','b3_alquiler','$/mes','Centro de procesamiento + pick-up',true],
               ['Electricidad (cámara + envasadora + iluminación)','b3_luz','$/mes','Tarifa comercial Río Cuarto',true],
               ['Despostador / maestro carnicero','b3_sueldo1','$/mes','Salario bruto + cargas sociales (~1.6×)',true],
@@ -607,51 +694,51 @@ export default function App(){
 
           {finTab==='resumen'&&<>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
-              <Card title="Composición del costo por kg" badge="Desglose" badgeColor="blue">
+              <Card title="Composición del costo por kg premium" badge="Desglose" badgeColor="blue">
                 <div style={{padding:20}}>
-                  <Bar label="B1 · Campo" value={b1kg} max={maxKg} color={C.green}/>
-                  <Bar label="B2 · Faena y logística" value={b2kg} max={maxKg} color={C.amber}/>
-                  <Bar label="B3 · Operativo local" value={b3kg} max={maxKg} color={C.blue}/>
-                  <Bar label="B4 · Comercialización" value={b4kg} max={maxKg} color={C.red}/>
+                  <Bar label="Animal neto (post-canje Frideza)" value={b1kg} max={maxKg} color={C.green}/>
+                  <Bar label="Depósito + operativo Río Cuarto" value={b3kg} max={maxKg} color={C.blue}/>
+                  <Bar label="Comercialización D2C" value={b4kg} max={maxKg} color={C.red}/>
                   <div style={{marginTop:14,padding:12,background:C.greenBg,borderRadius:10,border:`1px solid ${C.greenBorder}`}}>
-                    <div style={{fontSize:10,fontWeight:700,color:C.green,marginBottom:3}}>PRECIO MÍNIMO DE EQUILIBRIO</div>
+                    <div style={{fontSize:10,fontWeight:700,color:C.green,marginBottom:3}}>PRECIO MÍNIMO DE EQUILIBRIO (premium)</div>
                     <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,color:C.greenDark,fontWeight:600}}>{fmt(costoKg)}/kg</div>
-                    <div style={{fontSize:11,color:C.text3,marginTop:3}}>Para 30% de margen: <strong style={{color:C.green}}>{fmt(costoKg/0.7)}/kg</strong></div>
+                    <div style={{fontSize:11,color:C.text3,marginTop:3}}>Precio premium actual: <strong style={{color:C.green}}>{fmt(precioVentaPrem)}/kg</strong> · margen {fmtPct(margenPct)}</div>
                   </div>
                 </div>
               </Card>
-              <Card title="Escenarios de venta parcial" badge="KPI crítico" badgeColor="red">
+              <Card title="Escenarios de venta de premium" badge="KPI crítico" badgeColor="red">
                 <div style={{padding:20}}>
                   {[100,90,80,70,60,50].map(pct=>{
-                    const kgV=kgNS*(pct/100)
-                    const res2=v.precio_venta*kgV-(cvS*(pct/100)+cfS+mpS*(pct/100))
+                    const kgV=kgPremiumS*(pct/100)
+                    const ingV=precioVentaPrem*kgV
+                    const res2=ingV-((costoNetoAnimalS+packS+delS)*(pct/100)+cfS+ingV*(v.b4_mp/100))
                     const ok=res2>=0
-                    return <div key={pct} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:6,borderRadius:8,background:pct===70?(ok?C.greenBg:C.redBg):C.surface2,border:`${pct===70?2:1}px solid ${pct===70?(ok?C.greenBorder:C.redBorder):C.border}`}}>
-                      <span style={{fontSize:12,fontWeight:pct===70?700:400,color:C.text2}}>{pct}% vendido</span>
+                    return <div key={pct} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',marginBottom:6,borderRadius:8,background:pct===60?(ok?C.greenBg:C.redBg):C.surface2,border:`${pct===60?2:1}px solid ${pct===60?(ok?C.greenBorder:C.redBorder):C.border}`}}>
+                      <span style={{fontSize:12,fontWeight:pct===60?700:400,color:C.text2}}>{pct}% premium vendido</span>
                       <span style={{fontSize:11,color:C.text3,fontFamily:"'JetBrains Mono',monospace"}}>{Math.round(kgV)} kg</span>
                       <span style={{fontFamily:"'Inter',sans-serif",fontSize:14,fontWeight:700,color:ok?C.green:C.red}}>{fmt(res2)}</span>
                     </div>
                   })}
-                  <div style={{marginTop:8,fontSize:11,color:C.text3,background:C.surface2,borderRadius:8,padding:'8px 12px'}}>⚠ El 70% es el KPI crítico: por debajo el modelo no es viable con precios de mayo 2026.</div>
+                  <div style={{marginTop:8,fontSize:11,color:C.text3,background:C.surface2,borderRadius:8,padding:'8px 12px'}}>✓ Como Frideza absorbe el no-premium, tu riesgo baja: solo necesitás colocar los cortes premium. El punto de equilibrio ahora es mucho más alcanzable.</div>
                 </div>
               </Card>
             </div>
-            <Card title="Comparación v1 (original) vs v2 (mayo 2026)" badge="Auditoría de precios" badgeColor="red">
+            <Card title="Por qué el modelo dos canales mejora el negocio" badge="Análisis" badgeColor="green">
               <div style={{padding:20}}>
                 <table style={{width:'100%',borderCollapse:'collapse'}}>
-                  <thead><tr>{['Concepto','V1 (original)','V2 (mayo 2026)','Diferencia'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',padding:'8px 12px',textAlign:'left',borderBottom:`2px solid ${C.border}`,letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['Concepto','Modelo viejo (toda la res)','Modelo Frideza (solo premium)','Efecto'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',padding:'8px 12px',textAlign:'left',borderBottom:`2px solid ${C.border}`,letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {[['Costo ternero/cab','$180.000',fmt(v.b1_ternero),'red'],
-                      ['Ración feedlot/cab','$90.000',fmt(v.b1_racion),'red'],
-                      ['Packaging/pedido','$1.800',fmt(v.b4_pack),'red'],
-                      ['Costo total/kg neto',fmt(3500),fmt(costoKg),'red'],
-                      ['Precio necesario (30% margen)','~$10.000/kg',fmt(costoKg/0.7),'amber'],
-                    ].map(([label,v1,v2,variant])=>(
+                    {[['Kg a vender/animal','196 kg (toda la res)',kgPremium.toFixed(0)+' kg (solo premium)','green'],
+                      ['Inversión inicial','$20M – $31M','$3M – $5M','green'],
+                      ['Centro de procesamiento','Propio (caro)','Frideza lo hace','green'],
+                      ['Riesgo comercial','Vender el 100%','Solo el '+(kgN>0?Math.round(kgPremium/kgN*100):0)+'%','green'],
+                      ['Costo neto animal/kg premium',fmt(3500),fmt(kgPremium>0?costoNetoAnimal/kgPremium:0),'green'],
+                    ].map(([label,v1,v2])=>(
                       <tr key={label} style={{borderBottom:`1px solid ${C.border}`}}>
                         <td style={{padding:'10px 12px',fontSize:12,color:C.text}}>{label}</td>
-                        <td style={{padding:'10px 12px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green}}>{v1}</td>
-                        <td style={{padding:'10px 12px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.red,fontWeight:700}}>{v2}</td>
-                        <td style={{padding:'10px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:20,background:variant==='red'?C.redBg:C.amberBg,color:variant==='red'?C.red:C.amber}}>▲ Subió</span></td>
+                        <td style={{padding:'10px 12px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text3}}>{v1}</td>
+                        <td style={{padding:'10px 12px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green,fontWeight:700}}>{v2}</td>
+                        <td style={{padding:'10px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:20,background:C.greenBg,color:C.green}}>✓ Mejora</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -665,24 +752,24 @@ export default function App(){
         <div style={{background:C.surface,borderLeft:`1px solid ${C.border}`,padding:18,position:'sticky',top:0,maxHeight:'calc(100vh - 172px)',overflowY:'auto',boxShadow:'-2px 0 8px rgba(0,0,0,0.04)'}}>
           <div style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:C.navy,fontWeight:600,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>📊 Tablero en tiempo real</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:14}}>
-            <Kpi label="Kg netos / semana" value={Math.round(kgNS)+' kg'} sub={v.animales_semana+' novillos · ×0.435'} variant="green" full/>
+            <Kpi label="Kg premium / semana" value={Math.round(kgPremiumS)+' kg'} sub={v.animales_semana+' novillos · solo premium'} variant="green" full/>
             <Kpi label="Costo / semana" value={fmt(totS)} variant="amber"/>
-            <Kpi label="Costo / kg neto" value={fmt(costoKg)} sub="envasado entregado" variant="amber"/>
+            <Kpi label="Costo / kg premium" value={fmt(costoKg)} sub="entregado D2C" variant="amber"/>
           </div>
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>Desglose costo/kg</div>
-            <Bar label="Campo" value={b1kg} max={maxKg} color={C.green}/>
-            <Bar label="Faena + logística" value={b2kg} max={maxKg} color={C.amber}/>
-            <Bar label="Operativo local" value={b3kg} max={maxKg} color={C.blue}/>
-            <Bar label="Comercialización" value={b4kg} max={maxKg} color={C.red}/>
+            <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8}}>Desglose costo/kg premium</div>
+            <Bar label="Animal neto (post-Frideza)" value={b1kg} max={maxKg} color={C.green}/>
+            <Bar label="Depósito + operativo" value={b3kg} max={maxKg} color={C.blue}/>
+            <Bar label="Comercialización D2C" value={b4kg} max={maxKg} color={C.red}/>
           </div>
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Precio de venta promedio/kg</div>
-            <div style={{display:'flex',alignItems:'center',gap:5,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:'7px 11px',marginBottom:5}}>
+            <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>Precio premium ponderado/kg</div>
+            <div style={{display:'flex',alignItems:'center',gap:5,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:10,padding:'9px 11px',marginBottom:5}}>
               <span style={{color:C.text3,fontSize:13}}>$</span>
-              <input type="number" value={v.precio_venta} onChange={e=>set('precio_venta',e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'Inter',sans-serif",fontSize:20,color:C.navy,width:'100%',outline:'none',textAlign:'right',fontWeight:600}}/>
+              <span style={{fontFamily:"'Inter',sans-serif",fontSize:20,color:C.navy,width:'100%',textAlign:'right',fontWeight:600}}>{Math.round(precioVentaPrem).toLocaleString('es-AR')}</span>
               <span style={{color:C.text3,fontSize:11}}>/kg</span>
             </div>
+            <div style={{fontSize:9,color:C.text3,textAlign:'center',marginBottom:5}}>(promedio ponderado de los cortes premium — editá en módulo Mix)</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5}}>
               <div style={{padding:'8px 10px',background:mv==='green'?C.greenBg:mv==='amber'?C.amberBg:C.redBg,borderRadius:8,border:`1px solid ${mv==='green'?C.greenBorder:mv==='amber'?C.amberBorder:C.redBorder}`}}>
                 <div style={{fontSize:9,color:C.text3,marginBottom:2}}>Margen/kg</div>
@@ -719,74 +806,80 @@ export default function App(){
     {/* ══ MIX DE CORTES ══ */}
     {mod==='mix'&&<>
       <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
-        <SI label="Precio mix ponderado" value={fmt(mixPrecio)+'/kg'} variant="green"/>
-        <Div/><SI label="Ingreso semanal" value={fmt(mixTotIng)}/>
-        <Div/><SI label="Margen mix" value={fmt(mixTotIng-totS)} variant={mixTotIng-totS>=0?'green':'red'}/>
-        <Div/><SI label="Resultado mensual" value={fmt((mixTotIng-totS)*4.33)} variant={(mixTotIng-totS)*4.33>=0?'green':'red'}/>
+        <SI label="Precio premium ponderado" value={fmt(mixPrecioPrem)+'/kg'} variant="green"/>
+        <Div/><SI label="Ingreso premium/sem" value={fmt(ingPremiumS)}/>
+        <Div/><SI label="Margen premium" value={fmt(ingPremiumS-totS)} variant={ingPremiumS-totS>=0?'green':'red'}/>
+        <Div/><SI label="Resultado mensual" value={fmt((ingPremiumS-totS)*4.33)} variant={(ingPremiumS-totS)*4.33>=0?'green':'red'}/>
       </div>
       <div style={{padding:'24px'}}>
-        <Alert type="warning" icon="⚠️" title="Punto ciego crítico — corregido en v2"
-          body="El modelo original usaba $12.000/kg sin desglosar cortes. Los precios al consumidor en mayo 2026 van de $10.381 (picada) a $24.000 (lomo). El mix real determina la rentabilidad: la diferencia entre vender asado vs. cortes premium puede ser de $5.000–8.000/kg en el precio promedio ponderado."/>
+        <Alert type="info" icon="🥩" title="Modelo dos canales — clic en el botón para reasignar un corte"
+          body={`Vos comercializás los cortes PREMIUM (${v.mix.filter(c=>c.premium).length} cortes, ${kgPremium.toFixed(0)} kg/animal). Frideza comercializa el resto (${v.mix.filter(c=>!c.premium).length} cortes, ${kgNoPrem.toFixed(0)} kg/animal) y se cobra con ellos vía canje. El precio premium ponderado es lo que determina tu margen real.`}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 260px',gap:20}}>
-          <Card title="Distribución de cortes por res" badge="Editá kg y precio D2C" badgeColor="blue">
+          <Card title="Distribución de cortes por res" badge="Premium = vos · Frideza = resto" badgeColor="green">
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead><tr style={{background:C.surface2}}>
-                {['Corte','Kg/res','Precio D2C $/kg','Ingreso/sem','%'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h!=='Corte'?'right':'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+                {['Canal','Corte','Kg/res','Precio $/kg','Ingreso/sem','%'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h!=='Corte'&&h!=='Canal'?'right':'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {v.mix.map((c,i)=>{
                   const ing=c.kg*c.precio*v.animales_semana
-                  const pct=mixTotIng>0?(ing/mixTotIng*100):0
-                  const dot=i<=5?C.green:i<=8?C.amber:C.red
-                  return <tr key={i} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
-                    <td style={{padding:'7px 14px',fontSize:12,color:C.text,fontWeight:500}}>
-                      <span style={{display:'inline-block',width:8,height:8,borderRadius:'50%',background:dot,marginRight:8}}/>
-                      {c.nombre}
+                  const pct=ingPremiumS>0&&c.premium?(ing/ingPremiumS*100):0
+                  return <tr key={i} className="rh" style={{borderBottom:`1px solid ${C.border}`,opacity:c.premium?1:0.55}}>
+                    <td style={{padding:'7px 14px'}}>
+                      <button onClick={()=>setMix(i,'premium',!c.premium)} style={{fontSize:9,fontWeight:700,padding:'3px 8px',borderRadius:20,border:'none',cursor:'pointer',background:c.premium?C.greenBg:C.surface2,color:c.premium?C.green:C.text3,letterSpacing:'.04em'}}>
+                        {c.premium?'★ PREMIUM':'FRIDEZA'}
+                      </button>
                     </td>
+                    <td style={{padding:'7px 14px',fontSize:12,color:C.text,fontWeight:500}}>{c.nombre}</td>
                     <td style={{padding:'7px 14px',textAlign:'right'}}>
                       <input type="number" value={c.kg} onChange={e=>setMix(i,'kg',e.target.value)} style={{width:55,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
                     </td>
                     <td style={{padding:'7px 14px',textAlign:'right'}}>
                       <input type="number" value={c.precio} onChange={e=>setMix(i,'precio',e.target.value)} style={{width:80,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
                     </td>
-                    <td style={{padding:'7px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:C.green}}>{fmt(ing)}</td>
-                    <td style={{padding:'7px 14px',textAlign:'right',fontSize:11,color:C.text3}}>{pct.toFixed(1)}%</td>
+                    <td style={{padding:'7px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:c.premium?C.green:C.text3}}>{fmt(ing)}</td>
+                    <td style={{padding:'7px 14px',textAlign:'right',fontSize:11,color:C.text3}}>{c.premium?pct.toFixed(1)+'%':'—'}</td>
                   </tr>
                 })}
                 <tr style={{background:C.surface2,borderTop:`2px solid ${C.border2}`}}>
-                  <td style={{padding:'9px 14px',fontSize:12,fontWeight:700,color:C.text}}>TOTAL</td>
-                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.green}}>{Math.round(mixTotKg)} kg</td>
-                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.amber}}>{fmt(mixPrecio)}/kg</td>
-                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.green}}>{fmt(mixTotIng)}</td>
+                  <td style={{padding:'9px 14px',fontSize:11,fontWeight:700,color:C.green}}>PREMIUM</td>
+                  <td style={{padding:'9px 14px',fontSize:12,fontWeight:700,color:C.text}}>{v.mix.filter(c=>c.premium).length} cortes</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.green}}>{kgPremium.toFixed(0)} kg</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.amber}}>{fmt(mixPrecioPrem)}/kg</td>
+                  <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:C.green}}>{fmt(ingPremiumS)}</td>
                   <td style={{padding:'9px 14px',textAlign:'right',fontSize:11,color:C.text3}}>100%</td>
                 </tr>
               </tbody>
             </table>
-            <div style={{padding:'10px 20px',background:C.surface2,fontSize:10,color:C.text3}}>🟢 Premium (lomo, bifes, cuadril, vacío, nalga, peceto) · 🟡 Medios · 🔴 Económicos</div>
+            <div style={{padding:'10px 20px',background:C.surface2,fontSize:10,color:C.text3}}>Clic en el botón de canal para mover un corte entre Premium (vos) y Frideza.</div>
           </Card>
           <div>
-            <Kpi label="Precio promedio ponderado" value={fmt(mixPrecio)+'/kg'} variant="green"/>
+            <Kpi label="Precio premium ponderado" value={fmt(mixPrecioPrem)+'/kg'} variant="green"/>
             <div style={{height:10}}/>
-            <Kpi label="Margen bruto total" value={fmt(mixTotIng-totS)} variant={mixTotIng-totS>=0?'green':'red'}/>
+            <Kpi label="Margen premium" value={fmt(ingPremiumS-totS)} variant={ingPremiumS-totS>=0?'green':'red'}/>
             <div style={{height:10}}/>
-            <Kpi label="Resultado mensual" value={fmt((mixTotIng-totS)*4.33)} variant={(mixTotIng-totS)*4.33>=0?'green':'red'}/>
+            <Kpi label="Resultado mensual" value={fmt((ingPremiumS-totS)*4.33)} variant={(ingPremiumS-totS)*4.33>=0?'green':'red'}/>
             <div style={{height:16}}/>
-            <Card title="Por segmento" badge="Ingresos" badgeColor="blue">
+            <Card title="Reparto de la res" badge="Dos canales" badgeColor="green">
               <div style={{padding:14}}>
-                {[['🟢 Premium',v.mix.slice(0,6).reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0),C.green],
-                  ['🟡 Medios',v.mix.slice(6,9).reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0),C.amber],
-                  ['🔴 Económicos',v.mix.slice(9).reduce((a,c)=>a+c.kg*c.precio*v.animales_semana,0),C.red],
-                ].map(([label,ing,color])=>(
-                  <div key={label} style={{marginBottom:10}}>
+                {[['🥩 El Retiro (premium)',ingPremiumS,kgPremium,C.green],
+                  ['🏭 Frideza (no-premium)',valorNoPremiumS,kgNoPrem,C.text3],
+                ].map(([label,val,kg,color])=>{
+                  const totalVal=ingPremiumS+valorNoPremiumS
+                  return <div key={label} style={{marginBottom:12}}>
                     <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:3}}>
                       <span style={{color:C.text2}}>{label}</span>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:C.text,fontWeight:500}}>{mixTotIng>0?((ing/mixTotIng)*100).toFixed(0):0}%</span>
+                      <span style={{fontFamily:"'JetBrains Mono',monospace",color:C.text,fontWeight:500}}>{kg.toFixed(0)} kg</span>
                     </div>
                     <div style={{height:6,background:C.surface2,borderRadius:3,overflow:'hidden'}}>
-                      <div style={{height:'100%',width:mixTotIng>0?`${(ing/mixTotIng)*100}%`:'0%',background:color,borderRadius:3,transition:'width .4s'}}/>
+                      <div style={{height:'100%',width:totalVal>0?`${(val/totalVal)*100}%`:'0%',background:color,borderRadius:3,transition:'width .4s'}}/>
                     </div>
+                    <div style={{fontSize:9,color:C.text3,marginTop:2}}>{totalVal>0?((val/totalVal)*100).toFixed(0):0}% del valor total de la res</div>
                   </div>
-                ))}
+                })}
+                <div style={{marginTop:10,padding:'10px 12px',background:C.greenBg,borderRadius:8,border:`1px solid ${C.greenBorder}`,fontSize:11,color:C.greenDark,lineHeight:1.6}}>
+                  Vendés el <strong>{kgN>0?Math.round(kgPremium/kgN*100):0}%</strong> de la carne pero ese porcentaje concentra el <strong>{(ingPremiumS+valorNoPremiumS)>0?Math.round(ingPremiumS/(ingPremiumS+valorNoPremiumS)*100):0}%</strong> del valor.
+                </div>
               </div>
             </Card>
           </div>
