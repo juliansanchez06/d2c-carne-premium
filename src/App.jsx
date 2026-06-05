@@ -19,6 +19,7 @@ const DOC_REF = doc(db, 'd2c-carne', 'config')
 const DEFAULTS = {
   b1_ternero:1316000,b1_supl:105000,b1_racion:385000,b1_sanidad:18000,b1_personal:28000,
   peso_vivo:450,rinde_gancho:58,rinde_carnicero:84.5,animales_semana:3,
+  vacas_madre:100,tasa_destete:77,
   b2_flete1:25000,b2_faena:40000,b2_flete2:60000,b2_guias:6000,b2_recupero:15000,b2_iibb:8000,b2_contingencia:25000,
   b3_alquiler:600000,b3_luz:320000,b3_sueldo1:900000,b3_sueldo2:550000,b3_insumos:200000,b3_amort:220000,b3_mant:90000,b3_seguros:150000,b3_obra:250000,
   b4_pack:4000,b4_pedidos:60,b4_delivery:2000,b4_mp:5.99,b4_mkt:200000,b4_web:50000,b4_ventas:400000,
@@ -455,6 +456,14 @@ export default function App(){
   const kgG=v.peso_vivo*(v.rinde_gancho/100)
   const kgN=kgG*(v.rinde_carnicero/100)           // carne neta total / animal
   const anim=v.animales_semana
+
+  // ── CINTA PRODUCTIVA · todo derivado de animales_semana (fuente de verdad) ──
+  const faenaMes = Math.round(anim*4.33)            // animales faenados/mes
+  const faenaAnio = Math.round(anim*52)             // animales faenados/año
+  const terneroPropios = Math.round(v.vacas_madre*(v.tasa_destete/100))  // destete propio/año
+  const comprasAnio = Math.max(0, faenaAnio-terneroPropios)              // a comprar/año
+  const comprasMes = Math.round(comprasAnio/12)
+  const propiosMes = Math.round(terneroPropios/12)
 
   // Separar premium (vos) vs no-premium (Frideza)
   const kgPremium  = v.mix.filter(c=>c.premium).reduce((a,c)=>a+c.kg,0)   // kg premium/animal
@@ -992,11 +1001,11 @@ export default function App(){
     {/* ══ CINTA PRODUCTIVA ══ */}
     {mod==='prod'&&<>
       <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
-        <SI label="Vacas madre" value="100"/>
-        <Div/><SI label="Destete 77%" value="77/año" variant="green"/>
-        <Div/><SI label="Compras" value="67/año" variant="amber"/>
+        <SI label="Vacas madre" value={v.vacas_madre}/>
+        <Div/><SI label={`Destete ${v.tasa_destete}%`} value={terneroPropios+'/año'} variant="green"/>
+        <Div/><SI label="Compras" value={comprasAnio+'/año'} variant="amber"/>
         <Div/><SI label="Ciclo propio" value="27–28 meses" variant="amber"/>
-        <Div/><SI label="Faena" value="3/sem · 12/mes" variant="green"/>
+        <Div/><SI label="Faena" value={anim+'/sem · '+faenaMes+'/mes'} variant="green"/>
         <div style={{marginLeft:'auto',display:'flex',gap:4}}>
           {[['gantt','Flujo anual'],['compras','Compras'],['inquilino','Inquilino'],['supl','Suplementación']].map(([id,label])=>(
             <Tab key={id} active={prodTab===id} onClick={()=>setProdTab(id)} label={label}/>
@@ -1005,24 +1014,66 @@ export default function App(){
       </div>
       <div style={{padding:'24px'}}>
         {prodTab==='gantt'&&<>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20,padding:18,background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,boxShadow:sh}}>
+            {[['Vacas madre','vacas_madre','cab','1'],['Tasa de destete','tasa_destete','%','1'],['Animales a faenar/semana','animales_semana','cab/sem','1']].map(([label,key,unit,step])=>(
+              <div key={key}>
+                <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{label}</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:8,padding:'6px 10px'}}>
+                  <input type="number" step={step} value={v[key]} onChange={e=>set(key,e.target.value)} style={{background:'transparent',border:'none',fontFamily:"'JetBrains Mono',monospace",fontSize:14,fontWeight:600,color:C.navy,width:70,outline:'none',textAlign:'right'}}/>
+                  <span style={{fontSize:11,color:C.text3}}>{unit}</span>
+                </div>
+              </div>
+            ))}
+            <div style={{flex:1,minWidth:240,display:'flex',alignItems:'flex-end'}}>
+              <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:10,padding:'10px 14px',width:'100%',fontSize:11,color:C.greenDark,lineHeight:1.6}}>
+                <strong>{anim}/semana</strong> = {faenaMes} animales/mes = <strong>{faenaAnio}/año</strong>.<br/>
+                Con {v.vacas_madre} vacas al {v.tasa_destete}% destete: <strong>{terneroPropios} propios/año</strong> + <strong style={{color:comprasAnio>0?C.amber:C.green}}>{comprasAnio} comprados/año</strong>.
+              </div>
+            </div>
+          </div>
           <Alert type="info" icon="📅" title="Gestación 9 meses correctamente modelada"
             body="Servicio ene–abr → gestación 9 meses → parición oct–ene → destete 7 meses → may–ago → recría 10–11 meses → 350 kg en mar–jul año N+2 → feedlot 100 días → faena. Ciclo total: 27–28 meses por animal propio. El primer año operativo del D2C es 100% animales comprados."/>
           <Card title="Flujo mensual — Estado estacionario (año N+2 en adelante)" badge="Cinta transportadora" badgeColor="green">
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead><tr style={{background:C.surface2}}>
-                {['Mes','Propios al feedlot','Compras necesarias','Total feedlot','Origen faena','Estado margen'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+                {['Período','Propios al feedlot','Compras necesarias','Total feedlot','Origen faena','Estado margen'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {[['Ene–Feb','0','12/mes','12','100% comprados','Costo máximo','red'],['Mar–Abr','8–12','0–4','12','Mix (cabeza parición)','Propios empiezan','amber'],['May–Jun','15–20','0','12','100% propios','★ Mejor margen','green'],['Jul–Sep','10–15','0–2','12','Mayoría propios','Margen alto','green'],['Oct–Nov','3–5','7–9','12','Mix','Compras parcial','amber'],['Dic','0','12','12','100% comprados','Margen bajo','red']].map(([mes,propios,compras,feedlot,origen,estado,variant])=>(
-                  <tr key={mes} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
-                    <td style={{padding:'10px 14px',fontSize:12,fontWeight:600,color:C.text}}>{mes}</td>
-                    <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green,fontWeight:600}}>{propios}</td>
-                    <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.amber,fontWeight:600}}>{compras}</td>
-                    <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:C.navy,fontWeight:700}}>{feedlot}</td>
-                    <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>{origen}</td>
-                    <td style={{padding:'10px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:20,background:variant==='green'?C.greenBg:variant==='amber'?C.amberBg:C.redBg,color:variant==='green'?C.green:variant==='amber'?C.amber:C.red}}>{estado}</span></td>
-                  </tr>
-                ))}
+                {(()=>{
+                  // Distribución estacional de propios al feedlot (suma = 12 meses).
+                  // Pico may-sep (cabeza+cuerpo parición), valle dic-feb.
+                  const dist=[
+                    ['Ene–Feb',0.0,'100% comprados','Costo máximo','red'],
+                    ['Mar–Abr',0.18,'Mix (cabeza parición)','Propios empiezan','amber'],
+                    ['May–Jun',0.30,'100% propios','★ Mejor margen','green'],
+                    ['Jul–Sep',0.32,'Mayoría propios','Margen alto','green'],
+                    ['Oct–Nov',0.14,'Mix','Compras parcial','amber'],
+                    ['Dic',0.06,'100% comprados','Margen bajo','red'],
+                  ]
+                  const mesesPeriodo=[2,2,2,3,2,1]  // cantidad de meses por período
+                  return dist.map(([per,frac,origen,estado,variant],idx)=>{
+                    const mp=mesesPeriodo[idx]
+                    const feedlotPeriodo=faenaMes*mp
+                    const propiosPeriodo=Math.round(terneroPropios*frac)
+                    const comprasPeriodo=Math.max(0,feedlotPeriodo-propiosPeriodo)
+                    return <tr key={per} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
+                      <td style={{padding:'10px 14px',fontSize:12,fontWeight:600,color:C.text}}>{per}</td>
+                      <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green,fontWeight:600}}>{propiosPeriodo}</td>
+                      <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.amber,fontWeight:600}}>{comprasPeriodo}</td>
+                      <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:C.navy,fontWeight:700}}>{feedlotPeriodo}</td>
+                      <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>{origen}</td>
+                      <td style={{padding:'10px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'3px 10px',borderRadius:20,background:variant==='green'?C.greenBg:variant==='amber'?C.amberBg:C.redBg,color:variant==='green'?C.green:variant==='amber'?C.amber:C.red}}>{estado}</span></td>
+                    </tr>
+                  })
+                })()}
+                <tr style={{background:C.surface2,borderTop:`2px solid ${C.border2}`}}>
+                  <td style={{padding:'10px 14px',fontSize:12,fontWeight:700,color:C.text}}>TOTAL AÑO</td>
+                  <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.green,fontWeight:700}}>{terneroPropios}</td>
+                  <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.amber,fontWeight:700}}>{comprasAnio}</td>
+                  <td style={{padding:'10px 14px',fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:C.navy,fontWeight:700}}>{faenaAnio}</td>
+                  <td style={{padding:'10px 14px',fontSize:11,color:C.text2}}>—</td>
+                  <td style={{padding:'10px 14px'}}></td>
+                </tr>
               </tbody>
             </table>
           </Card>
@@ -1031,7 +1082,7 @@ export default function App(){
           <Alert type="info" icon="📊" title="Precio real ternero destete · Mayo 2026"
             body="CACG abril 2026: $6.580/kg promedio → animal 200 kg = $1.316.000. El modelo original usaba $180.000. Diferencia: $1.136.000/cabeza."/>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            {[{title:'Ventana ene–mar (27 animales)',sub:'Mejor precio relativo del año',rows:[['Precio estimado','$6.200–6.800/kg vivo','amber'],['Costo por animal','$1.240.000–1.360.000','amber'],['Suplementación adicional','$105.000/cab (7 meses)','red'],['Riesgo','Bajo — control total','green']]},
+            {[{title:`Ventana ene–mar (${Math.round(comprasAnio*0.4)} animales)`,sub:'Mejor precio relativo del año',rows:[['Precio estimado','$6.200–6.800/kg vivo','amber'],['Costo por animal','$1.240.000–1.360.000','amber'],['Suplementación adicional','$105.000/cab (7 meses)','red'],['Riesgo','Bajo — control total','green']]},
               {title:'⚠ Evitar agosto',sub:'Pico estacional garantizado',rows:[['Precio agosto','$7.200–8.000/kg vivo','red'],['Sobrecosto vs. enero','+$120.000–280.000/cab','red'],['Causa','Todos los invernadores comprando','red'],['Alternativa','Esperar → octubre','green']]},
               {title:'Opción sep (recriados 310 kg)',sub:'Sin suplementación · directo feedlot',rows:[['Precio estimado','~$1.581.000–1.674.000/cab','amber'],['Ahorro suplementación','$105.000/cab','green'],['Costo total campo','~$1.784.000/cab','green'],['Ventaja vs. ternero','$68.000 menos/animal','green']]},
               {title:'Regla de decisión',sub:'Con precios mayo 2026',rows:[['Precio ternero < $6.800/kg','Comprar + recría','green'],['Precio ternero > $7.200/kg','Evaluar recriado sep.','amber'],['Precio ternero > $8.000/kg','Esperar o reducir','red'],['NUNCA en agosto','Precio pico estacional','red']]},
