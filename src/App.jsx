@@ -18,7 +18,7 @@ const DOC_REF = doc(db, 'd2c-carne', 'config')
 
 const DEFAULTS = {
   b1_ternero:1316000,b1_supl:105000,b1_racion:385000,b1_sanidad:18000,b1_personal:28000,
-  peso_vivo:450,rinde_gancho:58,rinde_carnicero:75,animales_semana:3,
+  peso_vivo:450,rinde_gancho:58,rinde_carnicero:84.5,animales_semana:3,
   b2_flete1:25000,b2_faena:40000,b2_flete2:60000,b2_guias:6000,b2_recupero:15000,b2_iibb:8000,b2_contingencia:25000,
   b3_alquiler:600000,b3_luz:320000,b3_sueldo1:900000,b3_sueldo2:550000,b3_insumos:200000,b3_amort:220000,b3_mant:90000,b3_seguros:150000,b3_obra:250000,
   b4_pack:4000,b4_pedidos:60,b4_delivery:2000,b4_mp:5.99,b4_mkt:200000,b4_web:50000,b4_ventas:400000,
@@ -31,21 +31,31 @@ const DEFAULTS = {
   fz_costo_servicio:100000,
   fz_flete_premium:35000,
   pinned:{},
+  // Despiece real de novillo 450kg → res al gancho 261kg. kg = por animal (media res ×2).
+  // premium:true = lo vendés vos D2C · premium:false = lo comercializa Frideza
   mix:[
-    {nombre:'Lomo',kg:6,precio:35000,premium:true},
-    {nombre:'Bife de chorizo (ancho)',kg:11,precio:30000,premium:true},
-    {nombre:'Cuadril',kg:16,precio:28000,premium:true},
-    {nombre:'Vacío',kg:13,precio:29000,premium:true},
-    {nombre:'Nalga',kg:15,precio:27000,premium:true},
-    {nombre:'Peceto',kg:6,precio:28000,premium:true},
-    {nombre:'Bola de lomo',kg:6,precio:26000,premium:true},
-    {nombre:'Tapa de asado',kg:8,precio:19000,premium:false},
-    {nombre:'Matambre',kg:6,precio:21000,premium:false},
-    {nombre:'Asado de tira',kg:35,precio:18500,premium:false},
-    {nombre:'Paleta',kg:18,precio:17500,premium:false},
-    {nombre:'Tortuguita',kg:10,precio:17000,premium:false},
-    {nombre:'Picada / recortes',kg:20,precio:12000,premium:false},
-    {nombre:'Falda',kg:10,precio:12000,premium:false},
+    {nombre:'Lomo',kg:4.7,precio:35000,premium:true},
+    {nombre:'Bife de chorizo (angosto)',kg:11.7,precio:30000,premium:true},
+    {nombre:'Bife ancho (ojo de bife)',kg:10.4,precio:28000,premium:true},
+    {nombre:'Cuadril',kg:11.0,precio:27000,premium:true},
+    {nombre:'Colita de cuadril',kg:3.4,precio:28000,premium:true},
+    {nombre:'Vacío',kg:9.4,precio:29000,premium:true},
+    {nombre:'Entraña',kg:2.3,precio:32000,premium:true},
+    {nombre:'Nalga',kg:15.1,precio:22000,premium:false},
+    {nombre:'Bola de lomo',kg:9.4,precio:20000,premium:false},
+    {nombre:'Cuadrada',kg:8.4,precio:19000,premium:false},
+    {nombre:'Peceto',kg:6.0,precio:23000,premium:false},
+    {nombre:'Tapa de nalga',kg:5.0,precio:19000,premium:false},
+    {nombre:'Matambre',kg:5.5,precio:21000,premium:false},
+    {nombre:'Tapa de asado',kg:6.8,precio:18000,premium:false},
+    {nombre:'Asado de tira',kg:30.0,precio:18500,premium:false},
+    {nombre:'Falda',kg:8.4,precio:12000,premium:false},
+    {nombre:'Paleta',kg:19.1,precio:17500,premium:false},
+    {nombre:'Tortuguita',kg:5.0,precio:17000,premium:false},
+    {nombre:'Roast beef',kg:9.4,precio:18000,premium:false},
+    {nombre:'Marucha / aguja',kg:8.1,precio:16000,premium:false},
+    {nombre:'Osobuco',kg:9.4,precio:14000,premium:false},
+    {nombre:'Picada / recortes',kg:22.2,precio:12000,premium:false},
   ]
 }
 
@@ -847,7 +857,7 @@ export default function App(){
                     </td>
                     <td style={{padding:'7px 14px',fontSize:12,color:C.text,fontWeight:500}}>{c.nombre}</td>
                     <td style={{padding:'7px 14px',textAlign:'right'}}>
-                      <input type="number" value={c.kg} onChange={e=>setMix(i,'kg',e.target.value)} style={{width:55,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                      <input type="number" step="0.1" value={c.kg} onChange={e=>setMix(i,'kg',e.target.value)} style={{width:55,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
                     </td>
                     <td style={{padding:'7px 14px',textAlign:'right'}}>
                       <input type="number" value={c.precio} onChange={e=>setMix(i,'precio',e.target.value)} style={{width:80,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
