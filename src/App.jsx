@@ -452,26 +452,32 @@ export default function App(){
   const kgPremiumS = kgPremium*anim                                       // kg premium/semana
   const kgNoPremS  = kgNoPrem*anim
 
-  // Valor del no-premium que Frideza comercializa (canje / venta)
-  const valorNoPremium  = kgNoPrem*v.fz_precio_nopremium       // $/animal que vale lo de Frideza
+  // Valor de mercado del no-premium en gancho (lo que vale la carne que entregás)
+  const valorNoPremium  = kgNoPrem*v.fz_precio_nopremium       // $/animal en gancho
   const valorNoPremiumS = valorNoPremium*anim
 
   // Bloque 1 — costo del animal en campo
   const b1=v.b1_ternero+v.b1_supl+v.b1_racion+v.b1_sanidad+v.b1_personal
   const b1S=b1*anim
 
-  // Bloque 2 — logística. En modelo Frideza el canje cubre faena+desposte+envasado.
-  // Solo pagás fletes (hacienda→Frideza y premium envasado→Río Cuarto).
+  // Bloque 2 — logística. Frideza cubre faena+desposte+ENVASADO vía canje.
+  // Vos solo pagás los fletes (hacienda→Frideza y premium envasado→Río Cuarto) + guías.
   const b2r = v.fz_modalidad==='canje'
-    ? (v.b2_flete1 + v.fz_flete_premium + v.b2_guias)   // canje: solo fletes + guías
+    ? (v.b2_flete1 + v.fz_flete_premium + v.b2_guias)
     : (v.b2_flete1+v.b2_faena+v.b2_flete2+v.b2_guias+v.b2_iibb+v.b2_contingencia-v.b2_recupero)
   const b2S=b2r*anim
 
-  // ── MÉTODO 2: costo NETO del animal asignado a premium ──
-  // El no-premium no es costo, es sub-producto con valor que reduce el costo neto.
-  // En canje: Frideza se queda el no-premium → su valor cubre el costo del servicio.
-  const costoServicioCanje = v.fz_modalidad==='canje' ? v.fz_costo_servicio : 0
-  const costoNetoAnimal = (b1 + b2r) - valorNoPremium + costoServicioCanje
+  // ── CANJE PURO ──
+  // Frideza se queda TODO el no-premium como pago único por faena+desposte+envasado.
+  // El servicio (fz_costo_servicio) se PAGA CON la carne no-premium, no aparte.
+  // Si el no-premium vale más que el servicio, Frideza te liquida la diferencia en plata.
+  // Neto que recibís del no-premium = valor en gancho − costo del servicio que prestó Frideza
+  const costoServicio = v.fz_modalidad==='canje' ? v.fz_costo_servicio : 0
+  const netoNoPremium = valorNoPremium - costoServicio       // lo que te queda (puede liquidarse en $)
+  const netoNoPremiumS = netoNoPremium*anim
+
+  // MÉTODO 2: el neto del no-premium reduce el costo del animal asignado a premium
+  const costoNetoAnimal = (b1 + b2r) - netoNoPremium
   const costoNetoAnimalS = costoNetoAnimal*anim
 
   // Bloque 3 — operativo local. Con Frideza envasando, solo necesitás depósito chico.
@@ -630,8 +636,8 @@ export default function App(){
                 {IR('Flete campo → Frideza (~180 km)','b2_flete1','$/cab','Hacienda en pie al frigorífico',true)}
                 {IR('Flete premium envasados → Río Cuarto','fz_flete_premium','$/cab','Solo los cortes premium ya envasados al vacío',true)}
                 {IR('Guías, DT electrónico, certificados','b2_guias','$/cab',null,false)}
-                {IR('Costo servicio canje (faena+desposte+envasado)','fz_costo_servicio','$/cab','Lo cubre el no-premium que se queda Frideza',false)}
-                {IR('Precio asignado al no-premium','fz_precio_nopremium','$/kg','Valor mayorista de lo que comercializa Frideza',false)}
+                {IR('Servicio Frideza: faena + desposte + envasado al vacío','fz_costo_servicio','$/cab','Se paga con la carne no-premium, no en efectivo',false)}
+                {IR('Precio del no-premium en gancho','fz_precio_nopremium','$/kg','Valor de la carne que le dejás a Frideza',false)}
               </div>
             </Card>
             <Card title="Reparto de la res" badge="Premium vs No-Premium" badgeColor="green">
@@ -651,14 +657,23 @@ export default function App(){
                   </div>
                 </div>
                 <div style={{background:C.blueBg,border:`1px solid ${C.blueBorder}`,borderRadius:10,padding:'12px 16px'}}>
-                  <div style={{fontSize:12,fontWeight:600,color:C.blue,marginBottom:8}}>💡 Método 2 — Costo neto del animal (correcto)</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.blue,marginBottom:8}}>💡 Canje puro — Frideza envasa y se queda el no-premium</div>
                   <div style={{fontSize:12,color:C.text2,lineHeight:1.9}}>
+                    Valor no-premium en gancho ({kgNoPrem.toFixed(0)} kg): <strong style={{fontFamily:"'JetBrains Mono',monospace"}}>{fmt(valorNoPremium)}</strong><br/>
+                    − Servicio Frideza (faena+desposte+<strong>envasado</strong>): <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.red}}>−{fmt(costoServicio)}</strong><br/>
+                    <span style={{display:'block',marginTop:4,paddingTop:4,borderTop:`1px solid ${C.blueBorder}`}}>
+                    = Neto que recibís del no-premium: <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.green}}>{fmt(netoNoPremium)}/animal</strong>
+                    {netoNoPremium>=0 ? ' (Frideza te liquida la diferencia)' : ' (no alcanza a cubrir el servicio)'}</span>
+                  </div>
+                  <div style={{fontSize:12,color:C.text2,lineHeight:1.9,marginTop:10,paddingTop:10,borderTop:`1px solid ${C.blueBorder}`}}>
                     Costo animal (campo + fletes): <strong style={{fontFamily:"'JetBrains Mono',monospace"}}>{fmt(b1+b2r)}</strong><br/>
-                    − Valor del no-premium (Frideza): <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.green}}>−{fmt(valorNoPremium)}</strong><br/>
-                    + Costo servicio canje: <strong style={{fontFamily:"'JetBrains Mono',monospace"}}>{fmt(costoServicioCanje)}</strong><br/>
+                    − Neto del no-premium: <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.green}}>−{fmt(netoNoPremium)}</strong><br/>
                     <span style={{borderTop:`1px solid ${C.blueBorder}`,display:'block',marginTop:6,paddingTop:6}}>
                     = Costo NETO asignado a premium: <strong style={{fontFamily:"'JetBrains Mono',monospace",color:C.navy,fontSize:14}}>{fmt(costoNetoAnimal)}/animal</strong></span>
                     <span style={{display:'block',marginTop:4}}>Sobre {kgPremium.toFixed(0)} kg premium = <strong style={{color:C.navy}}>{fmt(kgPremium>0?costoNetoAnimal/kgPremium:0)}/kg</strong> solo de animal</span>
+                  </div>
+                  <div style={{fontSize:11,color:C.text3,lineHeight:1.6,marginTop:10,background:C.surface2,borderRadius:8,padding:'8px 12px'}}>
+                    ✓ El envasado de tus cortes premium <strong>no te cuesta plata aparte</strong>: lo pagás con la carne no-premium que le dejás a Frideza. Eso ya está ponderado en el costo del servicio.
                   </div>
                 </div>
               </div>
