@@ -407,6 +407,7 @@ export default function App(){
   const [stock,setStock]=useState([])           // stock en vivo desde Firestore
   const [lotes,setLotes]=useState([])            // historial de lotes
   const [stockMsg,setStockMsg]=useState('')
+  const [addKg,setAddKg]=useState({})
   const debRef=useRef(null)
 
   // Listener de stock en tiempo real (la web pública leerá esta misma colección)
@@ -528,6 +529,29 @@ export default function App(){
         activo:true, actualizado:serverTimestamp(),
       },{merge:true})
       setStockMsg(`✓ ${nombre} ajustado a ${kgNuevo} kg`)
+    }catch(e){setStockMsg('Error: '+e.message)}
+  },[])
+
+  // Sumar kg a un corte (a medida que Frideza lo va entregando)
+  const sumarKgCorte=useCallback(async(id,nombre,precio,kgSumar)=>{
+    const kg=parseFloat(kgSumar)||0
+    if(kg===0)return
+    try{
+      await setDoc(doc(db,'stock',id),{
+        nombre, precioKg:precio, kgDisponible:increment(kg),
+        activo:true, actualizado:serverTimestamp(),
+      },{merge:true})
+      setStockMsg(`✓ +${kg} kg de ${nombre} cargados al stock`)
+    }catch(e){setStockMsg('Error: '+e.message)}
+  },[])
+
+  // Mostrar/ocultar un corte en la web pública (independiente de los kg)
+  const toggleVisible=useCallback(async(id,nombre,precio,visibleActual)=>{
+    try{
+      await setDoc(doc(db,'stock',id),{
+        nombre, precioKg:precio, activo:!visibleActual, actualizado:serverTimestamp(),
+      },{merge:true})
+      setStockMsg(`${!visibleActual?'✓ '+nombre+' visible en la web':nombre+' oculto en la web'}`)
     }catch(e){setStockMsg('Error: '+e.message)}
   },[])
 
@@ -1392,28 +1416,44 @@ export default function App(){
           </div>
 
           <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:20}}>
-            <Card title="Stock en vivo por corte" badge="kg + animales equivalentes" badgeColor="green">
+            <Card title="Stock en vivo por corte" badge="Cargá lo que entrega Frideza" badgeColor="green">
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr style={{background:C.surface2}}>
-                  {['Corte','Disponible','Reservado','Real (vendible)','≈ Animales','Estado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h==='Corte'?'left':'right',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+                  {['Corte','Cargar +kg (Frideza)','Disponible','Real','≈ An.','Web'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 12px',textAlign:h==='Corte'?'left':'center',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.04em'}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {stockConEq.map(s=>{
-                    const estado=s.real<=0?['Agotado',C.red,C.redBg]:s.animalesEq<1?['Reponer',C.amber,C.amberBg]:['OK',C.green,C.greenBg]
-                    return <tr key={s.id} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
-                      <td style={{padding:'9px 14px',fontSize:12,color:C.text,fontWeight:500}}>{s.nombre}<span style={{fontSize:10,color:C.text3,marginLeft:6}}>{s.kgPorAnimal}kg/animal</span></td>
-                      <td style={{padding:'9px 14px',textAlign:'right'}}>
-                        <input type="number" step="0.1" defaultValue={(s.kgDisponible||0).toFixed(1)} key={s.kgDisponible} onBlur={e=>ajustarStock(s.id,s.nombre,s.precioKg,e.target.value)} style={{width:60,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                    const visible=s.activo!==false
+                    return <tr key={s.id} className="rh" style={{borderBottom:`1px solid ${C.border}`,opacity:visible?1:0.5}}>
+                      <td style={{padding:'9px 12px',fontSize:12,color:C.text,fontWeight:500}}>{s.nombre}<span style={{fontSize:10,color:C.text3,marginLeft:6}}>{s.kgPorAnimal}kg/an</span></td>
+                      <td style={{padding:'9px 12px',textAlign:'center'}}>
+                        <div style={{display:'flex',gap:4,alignItems:'center',justifyContent:'center'}}>
+                          <input type="number" step="0.1" placeholder="kg" value={addKg[s.id]||''} onChange={e=>setAddKg(p=>({...p,[s.id]:e.target.value}))}
+                            style={{width:54,background:C.surface,border:`1px solid ${C.border2}`,borderRadius:6,padding:'4px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                          <button onClick={()=>{sumarKgCorte(s.id,s.nombre,s.precioKg,addKg[s.id]);setAddKg(p=>({...p,[s.id]:''}))}}
+                            className="btn" style={{border:'none',background:C.green,color:'#fff',borderRadius:6,width:26,height:26,fontSize:15,fontWeight:700,cursor:'pointer',lineHeight:1}}>+</button>
+                        </div>
                       </td>
-                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.amber}}>{(s.kgReservado||0).toFixed(1)}</td>
-                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:s.real>0?C.green:C.red}}>{s.real.toFixed(1)} kg</td>
-                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:s.animalesEq<1?C.amber:C.text2}}>{s.animalesEq.toFixed(1)}</td>
-                      <td style={{padding:'9px 14px',textAlign:'right'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:20,background:estado[2],color:estado[1]}}>{estado[0]}</span></td>
+                      <td style={{padding:'9px 12px',textAlign:'center'}}>
+                        <input type="number" step="0.1" defaultValue={(s.kgDisponible||0).toFixed(1)} key={s.kgDisponible} onBlur={e=>ajustarStock(s.id,s.nombre,s.precioKg,e.target.value)} style={{width:56,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'4px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                      </td>
+                      <td style={{padding:'9px 12px',textAlign:'center',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:s.real>0?C.green:C.red}}>{s.real.toFixed(1)}</td>
+                      <td style={{padding:'9px 12px',textAlign:'center',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:s.animalesEq<1?C.amber:C.text2}}>{s.animalesEq.toFixed(1)}</td>
+                      <td style={{padding:'9px 12px',textAlign:'center'}}>
+                        <button onClick={()=>toggleVisible(s.id,s.nombre,s.precioKg,visible)} className="btn" title={visible?'Visible en la web — clic para ocultar':'Oculto — clic para mostrar'}
+                          style={{width:40,height:23,borderRadius:20,border:'none',cursor:'pointer',background:visible?C.green:C.border2,position:'relative',transition:'background .2s',padding:0}}>
+                          <span style={{position:'absolute',top:2,left:visible?20:2,width:19,height:19,borderRadius:20,background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.2)'}}/>
+                        </button>
+                      </td>
                     </tr>
                   })}
                 </tbody>
               </table>
-              <div style={{padding:'10px 14px',background:C.surface2,fontSize:10,color:C.text3,lineHeight:1.5}}>"≈ Animales" = a cuántos animales completos equivale el stock de ese corte. El más bajo (en ámbar) es el que primero se agota y limita cuántos pedidos podés cubrir. Editá "Disponible" y salí del campo para guardar.</div>
+              <div style={{padding:'10px 14px',background:C.surface2,fontSize:10,color:C.text3,lineHeight:1.6}}>
+                <strong>Cargar +kg:</strong> escribí los kg que te entregó Frideza de ese corte y tocá <span style={{color:C.green,fontWeight:700}}>+</span> — se suman al stock al instante.
+                <strong> Disponible:</strong> ajuste manual del total (editá y salí del campo).
+                <strong> Web:</strong> el switch muestra/oculta el corte en la tienda online, aunque tenga kg.
+              </div>
             </Card>
 
             <div>
