@@ -445,8 +445,8 @@ export default function App(){
   },[autoSave])
 
   const resetAll=useCallback(()=>{
-    if(!window.confirm('¿Restablecer todos los valores a los defaults de mayo 2026?'))return
-    const n={...DEFAULTS,pinned:{}};setVals(n);setDoc(DOC_REF,n,{merge:true}).then(()=>setSaveStatus('restablecido'))
+    if(!window.confirm('¿Restablecer todos los valores al despiece real de mayo 2026? Esto sobrescribe el mix guardado.'))return
+    const n={...DEFAULTS,pinned:{}};setVals(n);setDoc(DOC_REF,n).then(()=>setSaveStatus('restablecido ✓')).catch(()=>setSaveStatus('error'))
   },[])
 
   const v=vals
@@ -696,17 +696,41 @@ export default function App(){
             </Card>
             <Card title="Reparto de la res" badge="Premium vs No-Premium" badgeColor="green">
               <div style={{padding:'16px 20px'}}>
+                {(()=>{
+                  const kgVendible=kgPremium+kgNoPrem
+                  const resGancho=v.peso_vivo*(v.rinde_gancho/100)
+                  const huesoMerma=resGancho-kgVendible
+                  const pctMerma=resGancho>0?huesoMerma/resGancho*100:0
+                  const cuadra=pctMerma>=8&&pctMerma<=22  // rango normal hueso+grasa+merma
+                  return <div style={{marginBottom:16,padding:'12px 16px',borderRadius:10,background:cuadra?C.greenBg:C.amberBg,border:`1px solid ${cuadra?C.greenBorder:C.amberBorder}`}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                      <span style={{fontSize:12,fontWeight:700,color:cuadra?C.greenDark:'#92400E'}}>{cuadra?'✓ El despiece cuadra':'⚠ Revisá los kg del mix'}</span>
+                      <span style={{fontSize:11,color:C.text3}}>Novillo {v.peso_vivo}kg → res {resGancho.toFixed(0)}kg al gancho</span>
+                    </div>
+                    <div style={{display:'flex',gap:0,height:28,borderRadius:6,overflow:'hidden',marginBottom:6}}>
+                      <div style={{width:`${kgPremium/resGancho*100}%`,background:C.green,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'#FFF',fontWeight:700}}>{kgPremium.toFixed(0)}</div>
+                      <div style={{width:`${kgNoPrem/resGancho*100}%`,background:C.text3,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'#FFF',fontWeight:700}}>{kgNoPrem.toFixed(0)}</div>
+                      <div style={{width:`${huesoMerma/resGancho*100}%`,background:C.border2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:C.text2,fontWeight:700}}>{huesoMerma.toFixed(0)}</div>
+                    </div>
+                    <div style={{display:'flex',gap:16,fontSize:11,color:C.text2}}>
+                      <span>🟢 Premium {kgPremium.toFixed(0)}kg</span>
+                      <span>⬛ No-premium {kgNoPrem.toFixed(0)}kg</span>
+                      <span>▫️ Hueso+grasa+merma {huesoMerma.toFixed(0)}kg ({pctMerma.toFixed(0)}%)</span>
+                    </div>
+                    {!cuadra && <div style={{fontSize:11,color:'#92400E',marginTop:8,lineHeight:1.5}}>El hueso+merma da {pctMerma.toFixed(0)}% (lo normal es 12-18%). Si te da muy bajo, te faltan cargar cortes en el mix; si muy alto, sobran kg. Usá "Restablecer" para volver al despiece real.</div>}
+                  </div>
+                })()}
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
                   <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:'14px 16px'}}>
                     <div style={{fontSize:10,fontWeight:700,color:C.green,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>EL RETIRO (vos)</div>
                     <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,fontWeight:700,color:C.greenDark}}>{kgPremium.toFixed(0)} kg</div>
-                    <div style={{fontSize:11,color:C.text3,marginTop:2}}>{kgN>0?Math.round(kgPremium/kgN*100):0}% de la carne · {v.mix.filter(c=>c.premium).length} cortes premium</div>
+                    <div style={{fontSize:11,color:C.text3,marginTop:2}}>{(kgPremium+kgNoPrem)>0?Math.round(kgPremium/(kgPremium+kgNoPrem)*100):0}% de la carne vendible · {v.mix.filter(c=>c.premium).length} cortes premium</div>
                     <div style={{marginTop:8,fontSize:12,color:C.text2}}>Ingreso/sem: <strong style={{color:C.green}}>{fmt(ingPremiumS)}</strong></div>
                   </div>
                   <div style={{background:C.surface2,border:`1px solid ${C.border}`,borderRadius:12,padding:'14px 16px'}}>
                     <div style={{fontSize:10,fontWeight:700,color:C.text2,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>FRIDEZA</div>
                     <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,fontWeight:700,color:C.text}}>{kgNoPrem.toFixed(0)} kg</div>
-                    <div style={{fontSize:11,color:C.text3,marginTop:2}}>{kgN>0?Math.round(kgNoPrem/kgN*100):0}% de la carne · {v.mix.filter(c=>!c.premium).length} cortes</div>
+                    <div style={{fontSize:11,color:C.text3,marginTop:2}}>{(kgPremium+kgNoPrem)>0?Math.round(kgNoPrem/(kgPremium+kgNoPrem)*100):0}% de la carne vendible · {v.mix.filter(c=>!c.premium).length} cortes</div>
                     <div style={{marginTop:8,fontSize:12,color:C.text2}}>Valor canje/sem: <strong>{fmt(valorNoPremiumS)}</strong></div>
                   </div>
                 </div>
