@@ -668,6 +668,22 @@ export default function App(){
   const mejorMes=ranking[0]
   const peorMes=ranking[ranking.length-1]
   const difAnual=mejorMes.acumFinal-peorMes.acumFinal
+
+  // ── STOCK: animales equivalentes ──
+  // Cada corte premium representa una fracción fija del animal (c.kg).
+  // El stock real de cada corte ÷ sus kg por animal = a cuántos animales equivale.
+  // El MÍNIMO de todos es cuántos animales completos de pedidos podés cubrir.
+  const premiumCuts=v.mix.filter(c=>c.premium)
+  const stockConEq=stock.map(s=>{
+    const corte=premiumCuts.find(c=>c.nombre===s.nombre)
+    const kgPorAnimal=corte?corte.kg:0
+    const real=(s.kgDisponible||0)-(s.kgReservado||0)
+    const animalesEq=kgPorAnimal>0?real/kgPorAnimal:0
+    return {...s, real, kgPorAnimal, animalesEq}
+  })
+  const animalesCompletos=stockConEq.length>0?Math.min(...stockConEq.map(s=>s.animalesEq).filter(x=>!isNaN(x))):0
+  const corteLimitante=stockConEq.length>0?stockConEq.reduce((min,s)=>s.animalesEq<min.animalesEq?s:min,stockConEq[0]):null
+  const kgPremiumPorAnimal=premiumCuts.reduce((a,c)=>a+c.kg,0)
   const rv=resMes>=0?'green':'red'
 
   const IR=(label,key,unit,sub,upd)=><IRow key={key} label={label} sub={sub} value={v[key]} onChange={val=>set(key,val)} unit={unit} result={fmt(v[key])} updated={upd} pinned={pin(key)} onPin={()=>togglePin(key)}/>
@@ -1330,10 +1346,10 @@ export default function App(){
     {/* ══ STOCK & LOTES ══ */}
     {mod==='stock'&&<>
       <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
-        <SI label="Cortes en catálogo" value={stock.length} variant="green"/>
+        <SI label="Animales completos en stock" value={animalesCompletos.toFixed(1)} variant={animalesCompletos>=2?'green':animalesCompletos>=1?'amber':'red'}/>
         <Div/><SI label="Kg disponibles" value={Math.round(stock.reduce((a,s)=>a+(s.kgDisponible||0),0))+' kg'} variant="green"/>
         <Div/><SI label="Kg reservados" value={Math.round(stock.reduce((a,s)=>a+(s.kgReservado||0),0))+' kg'} variant="amber"/>
-        <Div/><SI label="Lotes cargados" value={lotes.length}/>
+        <Div/><SI label="Cortes / Lotes" value={stock.length+' / '+lotes.length}/>
         <Div/><SI label="Valor stock" value={fmt(stock.reduce((a,s)=>a+(s.kgDisponible||0)*(s.precioKg||0),0))} variant="green"/>
       </div>
       <div style={{padding:'24px'}}>
@@ -1356,30 +1372,48 @@ export default function App(){
             </div>
           </Card>
         ) : (
+          <>
+          {/* INDICADOR GRANDE: cuántos animales completos de pedidos podés cubrir */}
+          <div style={{background:animalesCompletos>=2?C.greenBg:animalesCompletos>=1?C.amberBg:C.redBg,border:`1px solid ${animalesCompletos>=2?C.greenBorder:animalesCompletos>=1?C.amberBorder:C.redBorder}`,borderRadius:14,padding:'18px 22px',marginBottom:20,display:'flex',alignItems:'center',gap:24,flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>Stock disponible equivale a</div>
+              <div style={{fontFamily:"'Inter',sans-serif",fontSize:42,fontWeight:700,color:animalesCompletos>=2?C.greenDark:animalesCompletos>=1?'#92400E':C.red,lineHeight:1}}>
+                {animalesCompletos.toFixed(1)} <span style={{fontSize:18,fontWeight:600}}>animales completos</span>
+              </div>
+              <div style={{fontSize:12,color:C.text2,marginTop:6}}>
+                Con el stock actual cubrís pedidos por <strong>{animalesCompletos.toFixed(1)} animales</strong> antes de quedarte sin algún corte premium.
+              </div>
+            </div>
+            {corteLimitante && <div style={{marginLeft:'auto',background:C.surface,borderRadius:12,padding:'14px 18px',border:`1px solid ${C.border}`}}>
+              <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>⚠ Primero se agota</div>
+              <div style={{fontSize:16,fontWeight:700,color:C.text}}>{corteLimitante.nombre}</div>
+              <div style={{fontSize:12,color:C.text3,marginTop:2}}>{corteLimitante.real.toFixed(1)} kg · {corteLimitante.animalesEq.toFixed(1)} animales</div>
+            </div>}
+          </div>
+
           <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:20}}>
-            <Card title="Stock en vivo por corte" badge="Premium D2C" badgeColor="green">
+            <Card title="Stock en vivo por corte" badge="kg + animales equivalentes" badgeColor="green">
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr style={{background:C.surface2}}>
-                  {['Corte','Precio/kg','Disponible','Reservado','Real','Estado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h==='Corte'?'left':'right',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+                  {['Corte','Disponible','Reservado','Real (vendible)','≈ Animales','Estado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h==='Corte'?'left':'right',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
-                  {stock.map(s=>{
-                    const real=(s.kgDisponible||0)-(s.kgReservado||0)
-                    const estado=real<=0?['Agotado',C.red,C.redBg]:real<3?['Últimos kg',C.amber,C.amberBg]:['Disponible',C.green,C.greenBg]
+                  {stockConEq.map(s=>{
+                    const estado=s.real<=0?['Agotado',C.red,C.redBg]:s.animalesEq<1?['Reponer',C.amber,C.amberBg]:['OK',C.green,C.greenBg]
                     return <tr key={s.id} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
-                      <td style={{padding:'9px 14px',fontSize:12,color:C.text,fontWeight:500}}>{s.nombre}</td>
-                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text2}}>{fmt(s.precioKg||0)}</td>
+                      <td style={{padding:'9px 14px',fontSize:12,color:C.text,fontWeight:500}}>{s.nombre}<span style={{fontSize:10,color:C.text3,marginLeft:6}}>{s.kgPorAnimal}kg/animal</span></td>
                       <td style={{padding:'9px 14px',textAlign:'right'}}>
-                        <input type="number" step="0.1" defaultValue={(s.kgDisponible||0).toFixed(1)} onBlur={e=>ajustarStock(s.id,s.nombre,s.precioKg,e.target.value)} style={{width:60,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                        <input type="number" step="0.1" defaultValue={(s.kgDisponible||0).toFixed(1)} key={s.kgDisponible} onBlur={e=>ajustarStock(s.id,s.nombre,s.precioKg,e.target.value)} style={{width:60,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
                       </td>
                       <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.amber}}>{(s.kgReservado||0).toFixed(1)}</td>
-                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:real>0?C.green:C.red}}>{real.toFixed(1)}</td>
+                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:s.real>0?C.green:C.red}}>{s.real.toFixed(1)} kg</td>
+                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:600,color:s.animalesEq<1?C.amber:C.text2}}>{s.animalesEq.toFixed(1)}</td>
                       <td style={{padding:'9px 14px',textAlign:'right'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:20,background:estado[2],color:estado[1]}}>{estado[0]}</span></td>
                     </tr>
                   })}
                 </tbody>
               </table>
-              <div style={{padding:'10px 14px',background:C.surface2,fontSize:10,color:C.text3}}>Editá un valor de "Disponible" y salí del campo para guardarlo. "Real" = disponible − reservado (lo que el cliente puede comprar).</div>
+              <div style={{padding:'10px 14px',background:C.surface2,fontSize:10,color:C.text3,lineHeight:1.5}}>"≈ Animales" = a cuántos animales completos equivale el stock de ese corte. El más bajo (en ámbar) es el que primero se agota y limita cuántos pedidos podés cubrir. Editá "Disponible" y salí del campo para guardar.</div>
             </Card>
 
             <div>
@@ -1417,6 +1451,7 @@ export default function App(){
               </Card>
             </div>
           </div>
+          </>
         )}
       </div>
     </>}
