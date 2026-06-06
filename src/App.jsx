@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { initializeApp } from 'firebase/app'
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
+import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, writeBatch, increment, serverTimestamp } from 'firebase/firestore'
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -404,7 +404,23 @@ export default function App(){
   const [saveStatus,setSaveStatus]=useState('cargando...')
   const [savedAnim,setSavedAnim]=useState(false)
   const [vals,setVals]=useState(DEFAULTS)
+  const [stock,setStock]=useState([])           // stock en vivo desde Firestore
+  const [lotes,setLotes]=useState([])            // historial de lotes
+  const [stockMsg,setStockMsg]=useState('')
   const debRef=useRef(null)
+
+  // Listener de stock en tiempo real (la web pública leerá esta misma colección)
+  useEffect(()=>{
+    const unsubStock=onSnapshot(collection(db,'stock'),snap=>{
+      setStock(snap.docs.map(d=>({id:d.id,...d.data()})))
+    },()=>{})
+    const unsubLotes=onSnapshot(collection(db,'lotes'),snap=>{
+      const arr=snap.docs.map(d=>({id:d.id,...d.data()}))
+      arr.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''))
+      setLotes(arr)
+    },()=>{})
+    return()=>{unsubStock();unsubLotes()}
+  },[])
 
   // Auth state listener
   useEffect(()=>{
@@ -447,6 +463,72 @@ export default function App(){
   const resetAll=useCallback(()=>{
     if(!window.confirm('¿Restablecer todos los valores al despiece real de mayo 2026? Esto sobrescribe el mix guardado.'))return
     const n={...DEFAULTS,pinned:{}};setVals(n);setDoc(DOC_REF,n).then(()=>setSaveStatus('restablecido ✓')).catch(()=>setSaveStatus('error'))
+  },[])
+
+  // Slug para id de corte (sin espacios/acentos)
+  const slug=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')
+
+  // Sincroniza el catálogo de stock en Firestore con los cortes PREMIUM del mix.
+  // Crea los docs que falten (kg en 0) y actualiza nombre/precio. No pisa el stock existente.
+  const syncCatalogo=useCallback(async()=>{
+    try{
+      setStockMsg('Sincronizando catálogo...')
+      const premium=vals.mix.filter(c=>c.premium)
+      const batch=writeBatch(db)
+      premium.forEach(c=>{
+        const id=slug(c.nombre)
+        const existente=stock.find(s=>s.id===id)
+        batch.set(doc(db,'stock',id),{
+          nombre:c.nombre, precioKg:c.precio, activo:true,
+          kgDisponible:existente?.kgDisponible??0,
+          kgReservado:existente?.kgReservado??0,
+          actualizado:serverTimestamp(),
+        },{merge:true})
+      })
+      await batch.commit()
+      setStockMsg('✓ Catálogo sincronizado con los cortes premium')
+    }catch(e){setStockMsg('Error: '+e.message)}
+  },[vals.mix,stock])
+
+  // Carga un lote de faena: suma kg al stock de cada corte y registra el lote
+  const cargarLote=useCallback(async(animalesLote)=>{
+    try{
+      setStockMsg('Cargando lote...')
+      const premium=vals.mix.filter(c=>c.premium)
+      const batch=writeBatch(db)
+      const cortesLote={}
+      premium.forEach(c=>{
+        const id=slug(c.nombre)
+        const kgLote=c.kg*animalesLote   // kg de este corte que entran
+        cortesLote[id]={nombre:c.nombre,kg:kgLote}
+        batch.set(doc(db,'stock',id),{
+          nombre:c.nombre, precioKg:c.precio, activo:true,
+          kgDisponible:increment(kgLote),
+          actualizado:serverTimestamp(),
+        },{merge:true})
+      })
+      const loteId='lote-'+Date.now()
+      batch.set(doc(db,'lotes',loteId),{
+        fecha:new Date().toISOString().slice(0,10),
+        animales:animalesLote,
+        cortes:cortesLote,
+        kgPremium:premium.reduce((a,c)=>a+c.kg*animalesLote,0),
+        creado:serverTimestamp(),
+      })
+      await batch.commit()
+      setStockMsg(`✓ Lote de ${animalesLote} animales cargado al stock`)
+    }catch(e){setStockMsg('Error: '+e.message)}
+  },[vals.mix])
+
+  // Ajuste manual de stock de un corte
+  const ajustarStock=useCallback(async(id,nombre,precio,kgNuevo)=>{
+    try{
+      await setDoc(doc(db,'stock',id),{
+        nombre, precioKg:precio, kgDisponible:parseFloat(kgNuevo)||0,
+        activo:true, actualizado:serverTimestamp(),
+      },{merge:true})
+      setStockMsg(`✓ ${nombre} ajustado a ${kgNuevo} kg`)
+    }catch(e){setStockMsg('Error: '+e.message)}
   },[])
 
   const v=vals
@@ -627,7 +709,7 @@ export default function App(){
 
     {/* NAV */}
     <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'8px 24px',display:'flex',gap:4,flexWrap:'wrap',boxShadow:sh}}>
-      {[['fin','◎','Financiero'],['mix','⊞','Mix de Cortes'],['caja','📊','Flujo de Caja'],['prod','🐄','Cinta Productiva'],['audit','⚑','Auditoría']].map(([id,icon,label])=>(
+      {[['fin','◎','Financiero'],['mix','⊞','Mix de Cortes'],['caja','📊','Flujo de Caja'],['prod','🐄','Cinta Productiva'],['stock','📦','Stock & Lotes'],['audit','⚑','Auditoría']].map(([id,icon,label])=>(
         <NavBtn key={id} active={mod===id} onClick={()=>setMod(id)} icon={icon} label={label}/>
       ))}
     </div>
@@ -1242,6 +1324,100 @@ export default function App(){
             title={sRes>=0?'Suplementación económicamente justificada':'Revisar período de suplementación'}
             body={sRes>=0?`Cada animal genera +${fmt(sRes)} de resultado neto (${sKgEx.toFixed(0)} kg extra × $${v.s_pnov.toLocaleString('es-AR')}/kg). Sin suplementación los animales llegan al feedlot con 3–4 meses de retraso, rompiendo el flujo de la cinta y destruyendo el modelo D2C.`:'Con los parámetros actuales, concentrá la suplementación en julio–septiembre (máximo impacto) y evaluá reducir de 7 a 5 meses. Maíz propio vs. pellets puede bajar el costo diario 30–40%.'}/>
         </>}
+      </div>
+    </>}
+
+    {/* ══ STOCK & LOTES ══ */}
+    {mod==='stock'&&<>
+      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+        <SI label="Cortes en catálogo" value={stock.length} variant="green"/>
+        <Div/><SI label="Kg disponibles" value={Math.round(stock.reduce((a,s)=>a+(s.kgDisponible||0),0))+' kg'} variant="green"/>
+        <Div/><SI label="Kg reservados" value={Math.round(stock.reduce((a,s)=>a+(s.kgReservado||0),0))+' kg'} variant="amber"/>
+        <Div/><SI label="Lotes cargados" value={lotes.length}/>
+        <Div/><SI label="Valor stock" value={fmt(stock.reduce((a,s)=>a+(s.kgDisponible||0)*(s.precioKg||0),0))} variant="green"/>
+      </div>
+      <div style={{padding:'24px'}}>
+        <Alert type="info" icon="📦" title="Este stock se sincroniza en vivo con la web pública"
+          body="Cargá un lote cuando llegan los premium envasados de Frideza y el stock se suma automáticamente. La web del cliente (Fase 3) lee esta misma colección de Firestore: cuando alguien compra, el stock baja en tiempo real y vos lo ves acá."/>
+
+        {stockMsg && <div style={{background:stockMsg.startsWith('Error')?C.redBg:C.greenBg,border:`1px solid ${stockMsg.startsWith('Error')?C.redBorder:C.greenBorder}`,borderRadius:8,padding:'10px 14px',fontSize:12,color:stockMsg.startsWith('Error')?C.red:C.greenDark,marginBottom:16}}>{stockMsg}</div>}
+
+        {stock.length===0 ? (
+          <Card title="Todavía no hay catálogo de stock" badge="Primer paso" badgeColor="amber">
+            <div style={{padding:'24px 20px',textAlign:'center'}}>
+              <div style={{fontSize:40,marginBottom:12}}>📦</div>
+              <div style={{fontSize:14,color:C.text2,marginBottom:6,fontWeight:600}}>Creá el catálogo a partir de tus cortes premium</div>
+              <div style={{fontSize:12,color:C.text3,marginBottom:20,maxWidth:440,margin:'0 auto 20px'}}>
+                Esto toma los {v.mix.filter(c=>c.premium).length} cortes marcados como premium en el módulo Mix y crea su ficha de stock (en 0 kg). Después cargás lotes para sumar kg.
+              </div>
+              <button onClick={syncCatalogo} style={{padding:'12px 28px',borderRadius:10,border:'none',background:C.navy,color:'#FFF',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:"'Inter',sans-serif"}}>
+                Crear catálogo de stock →
+              </button>
+            </div>
+          </Card>
+        ) : (
+          <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:20}}>
+            <Card title="Stock en vivo por corte" badge="Premium D2C" badgeColor="green">
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{background:C.surface2}}>
+                  {['Corte','Precio/kg','Disponible','Reservado','Real','Estado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:h==='Corte'?'left':'right',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {stock.map(s=>{
+                    const real=(s.kgDisponible||0)-(s.kgReservado||0)
+                    const estado=real<=0?['Agotado',C.red,C.redBg]:real<3?['Últimos kg',C.amber,C.amberBg]:['Disponible',C.green,C.greenBg]
+                    return <tr key={s.id} className="rh" style={{borderBottom:`1px solid ${C.border}`}}>
+                      <td style={{padding:'9px 14px',fontSize:12,color:C.text,fontWeight:500}}>{s.nombre}</td>
+                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text2}}>{fmt(s.precioKg||0)}</td>
+                      <td style={{padding:'9px 14px',textAlign:'right'}}>
+                        <input type="number" step="0.1" defaultValue={(s.kgDisponible||0).toFixed(1)} onBlur={e=>ajustarStock(s.id,s.nombre,s.precioKg,e.target.value)} style={{width:60,background:C.surface2,border:`1px solid ${C.border2}`,borderRadius:6,padding:'3px 7px',fontFamily:"'JetBrains Mono',monospace",fontSize:12,color:C.text,textAlign:'right',outline:'none'}}/>
+                      </td>
+                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.amber}}>{(s.kgReservado||0).toFixed(1)}</td>
+                      <td style={{padding:'9px 14px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:real>0?C.green:C.red}}>{real.toFixed(1)}</td>
+                      <td style={{padding:'9px 14px',textAlign:'right'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:20,background:estado[2],color:estado[1]}}>{estado[0]}</span></td>
+                    </tr>
+                  })}
+                </tbody>
+              </table>
+              <div style={{padding:'10px 14px',background:C.surface2,fontSize:10,color:C.text3}}>Editá un valor de "Disponible" y salí del campo para guardarlo. "Real" = disponible − reservado (lo que el cliente puede comprar).</div>
+            </Card>
+
+            <div>
+              <Card title="Cargar lote de faena" badge="Ingreso de stock" badgeColor="blue">
+                <div style={{padding:'16px 18px'}}>
+                  <div style={{fontSize:12,color:C.text2,marginBottom:12,lineHeight:1.6}}>Cuando llegan los premium envasados de Frideza, cargá cuántos animales entraron. Se suman los kg de cada corte premium automáticamente.</div>
+                  <div style={{display:'flex',gap:8,marginBottom:12}}>
+                    {[1,2,3,anim].filter((x,i,arr)=>arr.indexOf(x)===i).map(n=>(
+                      <button key={n} onClick={()=>cargarLote(n)} style={{flex:1,padding:'12px 8px',borderRadius:10,border:`1px solid ${C.border2}`,background:C.surface2,cursor:'pointer',fontFamily:"'Inter',sans-serif"}}>
+                        <div style={{fontSize:18,fontWeight:700,color:C.navy}}>{n}</div>
+                        <div style={{fontSize:9,color:C.text3}}>{n===1?'animal':'animales'}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{fontSize:11,color:C.text3,background:C.blueBg,borderRadius:8,padding:'8px 12px',lineHeight:1.5}}>
+                    1 animal = {v.mix.filter(c=>c.premium).reduce((a,c)=>a+c.kg,0).toFixed(1)} kg premium repartidos en {v.mix.filter(c=>c.premium).length} cortes
+                  </div>
+                  <button onClick={syncCatalogo} style={{width:'100%',marginTop:12,padding:'8px',borderRadius:8,border:`1px solid ${C.border2}`,background:'transparent',color:C.text2,fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif"}}>↻ Re-sincronizar catálogo con Mix</button>
+                </div>
+              </Card>
+
+              <Card title="Últimos lotes" badge={lotes.length+' total'} badgeColor="blue">
+                <div style={{padding:'8px 0',maxHeight:280,overflowY:'auto'}}>
+                  {lotes.length===0 ? <div style={{padding:'16px 18px',fontSize:12,color:C.text3,textAlign:'center'}}>Sin lotes cargados aún</div> :
+                    lotes.slice(0,8).map(l=>(
+                      <div key={l.id} style={{padding:'10px 18px',borderBottom:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:600,color:C.text}}>{l.animales} animales</div>
+                          <div style={{fontSize:10,color:C.text3}}>{l.fecha}</div>
+                        </div>
+                        <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:C.green}}>+{Math.round(l.kgPremium||0)} kg</div>
+                      </div>
+                    ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
       </div>
     </>}
 
