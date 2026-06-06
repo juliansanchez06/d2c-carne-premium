@@ -26,7 +26,7 @@ const DEFAULTS = {
   precio_venta:20000,
   s_dia:500,s_meses:7,s_anim:144,s_gdp:0.65,s_gdpsin:0.25,s_pnov:4400,
   inq_animales:80,inq_kg:5.5,inq_precio:4400,inq_precio_t:6580,inq_meses:12,
-  cj_inversion:5000000,cj_ramp1:30,cj_ramp2:55,cj_ramp3:75,cj_ramp4:90,
+  cj_inversion:5000000,cj_ramp1:30,cj_ramp2:55,cj_ramp3:75,cj_ramp4:90,cj_mes_inicio:4,
   fz_modalidad:'canje',
   fz_precio_nopremium:8000,
   fz_costo_servicio:100000,
@@ -548,9 +548,44 @@ export default function App(){
   const inqT=Math.round(inqIngA/(200*v.inq_precio_t))
   const rampMap=m=>m<=1?v.cj_ramp1:m<=3?v.cj_ramp2:m<=6?v.cj_ramp3:v.cj_ramp4
   const ingMF=ingB*4.33, costoVM=cvS*4.33, costoFM=cfS*4.33+mpS*4.33
+
+  // Factor estacional de costo por mes calendario (índice 0=Ene ... 11=Dic).
+  // Basado en la Cinta Productiva: may-sep = propios (costo bajo), dic-feb = comprados (costo alto).
+  // >1 = más caro que el promedio · <1 = más barato.
+  const FACTOR_ESTACIONAL=[1.08,1.08,1.03,1.00,0.94,0.93,0.94,0.96,0.97,1.02,1.05,1.08]
+  //                        Ene  Feb  Mar  Abr  May  Jun  Jul  Ago  Sep  Oct  Nov  Dic
+  const mesInicio = v.cj_mes_inicio ?? 4  // default Mayo (índice 4)
+
   let acum=-v.cj_inversion, beMonth=-1
-  const cajaRows=MESES.map((mes,i)=>{const pct=rampMap(i+1);const ing=ingMF*(pct/100);const cv2=costoVM*(pct/100);const res=ing-cv2-costoFM;acum+=res;if(acum>=0&&beMonth<0)beMonth=i+1;return{mes,pct,ing,cv2,res,acum}})
+  const cajaRows=MESES.map((_,i)=>{
+    const mesCal=(mesInicio+i)%12               // mes calendario real
+    const mes=MESES[mesCal]
+    const pct=rampMap(i+1)                       // ramp-up por meses de operación
+    const fEst=FACTOR_ESTACIONAL[mesCal]         // factor de costo estacional
+    const ing=ingMF*(pct/100)
+    const cv2=costoVM*(pct/100)*fEst             // costo variable ajustado por estación
+    const res=ing-cv2-costoFM
+    acum+=res
+    if(acum>=0&&beMonth<0)beMonth=i+1
+    return{mes,mesCal,pct,ing,cv2,res,acum,fEst}
+  })
   const mv=margenPct>=30?'green':margenPct>=15?'amber':'red'
+
+  // Probar los 12 meses de inicio y encontrar el de break-even más rápido
+  const simularInicio=(mi)=>{
+    let ac=-v.cj_inversion, be=-1
+    for(let i=0;i<12;i++){
+      const mc=(mi+i)%12, pct=rampMap(i+1)
+      const ing=ingMF*(pct/100), cv2=costoVM*(pct/100)*FACTOR_ESTACIONAL[mc]
+      ac+=ing-cv2-costoFM
+      if(ac>=0&&be<0)be=i+1
+    }
+    return{be:be<0?99:be,acumFinal:ac}
+  }
+  const ranking=MESES.map((m,i)=>({mes:m,idx:i,...simularInicio(i)})).sort((a,b)=>(b.acumFinal-a.acumFinal)||a.be-b.be)
+  const mejorMes=ranking[0]
+  const peorMes=ranking[ranking.length-1]
+  const difAnual=mejorMes.acumFinal-peorMes.acumFinal
   const rv=resMes>=0?'green':'red'
 
   const IR=(label,key,unit,sub,upd)=><IRow key={key} label={label} sub={sub} value={v[key]} onChange={val=>set(key,val)} unit={unit} result={fmt(v[key])} updated={upd} pinned={pin(key)} onPin={()=>togglePin(key)}/>
@@ -934,8 +969,28 @@ export default function App(){
       </div>
       <div style={{padding:'24px'}}>
         {cajaTab==='mensual'&&<>
-          <Alert type="warning" icon="⚠️" title="Riesgo de liquidez no modelado en v1"
-            body="El modelo anterior mostraba resultado semanal pero no el flujo de caja en el tiempo. Los primeros 3 meses son críticos: la habilitación SENASA tarda, la demanda arranca baja y los costos fijos corren desde el día 1."/>
+          <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'stretch'}}>
+            <div style={{background:C.surface,border:`1px solid ${C.border2}`,borderRadius:12,padding:'14px 18px',boxShadow:sh,display:'flex',flexDirection:'column',justifyContent:'center',minWidth:220}}>
+              <div style={{fontSize:10,fontWeight:600,color:C.text3,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>📅 Mes de inicio de la operación</div>
+              <select value={mesInicio} onChange={e=>set('cj_mes_inicio',e.target.value)} style={{padding:'8px 12px',borderRadius:8,border:`1px solid ${C.border2}`,background:C.surface2,fontSize:14,fontWeight:600,color:C.navy,fontFamily:"'Inter',sans-serif",cursor:'pointer',outline:'none'}}>
+                {MESES.map((m,i)=><option key={i} value={i}>{m}</option>)}
+              </select>
+              <div style={{fontSize:11,color:C.text3,marginTop:6}}>Break-even: <strong style={{color:beMonth>0&&beMonth<=8?C.green:C.amber}}>{beMonth>0?'mes '+beMonth:'> 12 meses'}</strong></div>
+            </div>
+            <div style={{flex:1,minWidth:280,background:mejorMes.idx===mesInicio?C.greenBg:C.blueBg,border:`1px solid ${mejorMes.idx===mesInicio?C.greenBorder:C.blueBorder}`,borderRadius:12,padding:'14px 18px',display:'flex',alignItems:'center',gap:14}}>
+              <div style={{fontSize:28}}>{mejorMes.idx===mesInicio?'✅':'💡'}</div>
+              <div>
+                {mejorMes.idx===mesInicio
+                  ? <><div style={{fontSize:13,fontWeight:700,color:C.greenDark}}>Estás arrancando en el mejor mes</div>
+                      <div style={{fontSize:12,color:C.text2,marginTop:2}}>{mejorMes.mes} es el momento óptimo: maximiza la caja acumulada del primer año porque los meses de mayor venta caen en temporada de costo bajo. Arrancar en {peorMes.mes} (el peor) dejaría {fmt(difAnual)} menos de caja al cabo de 12 meses.</div></>
+                  : <><div style={{fontSize:13,fontWeight:700,color:C.blue}}>El mejor mes para arrancar es {mejorMes.mes}</div>
+                      <div style={{fontSize:12,color:C.text2,marginTop:2}}>Arrancando en {mejorMes.mes} en vez de {peorMes.mes} ganás <strong style={{color:C.green}}>{fmt(difAnual)}</strong> más de caja acumulada en el primer año. La clave: que los meses de mayor venta (90%) caigan en temporada de animales propios (costo bajo).</div>
+                      <button onClick={()=>set('cj_mes_inicio',mejorMes.idx)} style={{marginTop:8,padding:'5px 12px',borderRadius:7,border:'none',background:C.navy,color:'#FFF',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:"'Inter',sans-serif"}}>Cambiar a {mejorMes.mes} →</button></>}
+              </div>
+            </div>
+          </div>
+          <Alert type="warning" icon="⚠️" title="El mes de inicio cambia el repago"
+            body="Arrancar en temporada de animales propios (may–sep) abarata el costo justo cuando las ventas todavía no despegaron. Arrancar en dic–feb (100% comprados) es el peor momento: costo máximo con ingresos mínimos. El factor estacional ya está aplicado mes a mes en la tabla."/>
           <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20}}>
             {[['Inversión inicial','cj_inversion','$'],['% ventas mes 1','cj_ramp1','%'],['% ventas mes 2–3','cj_ramp2','%'],['% ventas mes 4–6','cj_ramp3','%'],['% ventas mes 7–12','cj_ramp4','%']].map(([label,key,unit])=>(
               <div key={key}>
@@ -950,13 +1005,14 @@ export default function App(){
           <Card title="Proyección mes a mes — Primeros 12 meses" badge="Flujo de caja" badgeColor="blue">
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead><tr style={{background:C.surface2}}>
-                {['Mes','% Ventas','Kg vendidos','Ingresos','Costos var.','Costos fijos','Resultado','Acumulado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 12px',textAlign:h!=='Mes'&&h!=='% Ventas'?'right':'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
+                {['Mes','% Ventas','Estación','Kg vendidos','Ingresos','Costos var.','Costos fijos','Resultado','Acumulado'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 12px',textAlign:h!=='Mes'&&h!=='% Ventas'&&h!=='Estación'?'right':'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {cajaRows.map(({mes,pct,ing,cv2,res,acum:ac},i)=>(
+                {cajaRows.map(({mes,pct,ing,cv2,res,acum:ac,fEst},i)=>(
                   <tr key={i} className="rh" style={{borderBottom:`1px solid ${C.border}`,background:ac>=0?'rgba(22,163,74,.04)':'transparent'}}>
-                    <td style={{padding:'9px 12px',fontSize:12,color:C.text,fontWeight:500}}>{mes}</td>
+                    <td style={{padding:'9px 12px',fontSize:12,color:C.text,fontWeight:500}}>{mes} <span style={{fontSize:9,color:C.text3}}>· m{i+1}</span></td>
                     <td style={{padding:'9px 12px'}}><span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:20,background:pct>=80?C.greenBg:pct>=60?C.amberBg:C.redBg,color:pct>=80?C.green:pct>=60?C.amber:C.red}}>{pct}%</span></td>
+                    <td style={{padding:'9px 12px'}}><span style={{fontSize:10,fontWeight:600,color:fEst<0.97?C.green:fEst>1.04?C.red:C.amber}}>{fEst<0.97?'↓ barato':fEst>1.04?'↑ caro':'≈ medio'}</span></td>
                     <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text2}}>{Math.round(kgNS*(pct/100)*4.33)} kg</td>
                     <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text}}>{fmt(ing)}</td>
                     <td style={{padding:'9px 12px',textAlign:'right',fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text}}>{fmt(cv2)}</td>
