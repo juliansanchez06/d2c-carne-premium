@@ -92,6 +92,25 @@ const GS = `
   .tbtn:hover{color:${C.indigo}!important;}
   .sbtn:hover{transform:translateY(-1px);box-shadow:${shMd};}
   .pbtn:hover{background:${C.indigoBg}!important;border-color:${C.indigo}!important;}
+  .m-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  @media(max-width:820px){
+    .m-grid2{grid-template-columns:1fr!important;}
+    .m-grid2 > div{position:static!important;max-height:none!important;}
+    .m-side{border-left:none!important;border-top:1px solid ${C.border}!important;box-shadow:none!important;}
+    .m-hide{display:none!important;}
+    .m-wrap{flex-wrap:wrap!important;height:auto!important;gap:8px!important;}
+    .m-strip{overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap!important;}
+    .m-pad{padding:16px!important;}
+    .m-tabs{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-left:0!important;}
+    table{min-width:560px;}
+    .m-tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  }
+  @media(max-width:520px){
+    .m-h-title{font-size:14px!important;}
+    .m-h-sub{display:none!important;}
+    .m-grid4{grid-template-columns:1fr 1fr!important;}
+    .m-grid3{grid-template-columns:1fr!important;}
+  }
 `
 
 // ── UI Primitives ──────────────────────────────────────────────
@@ -138,7 +157,7 @@ function Card({title,subtitle,badge,badgeColor,children}){
         {subtitle&&<span style={{fontSize:11,color:C.text3,marginLeft:10}}>{subtitle}</span>}
       </div>
     </div>
-    {children}
+    <div className="m-tablewrap">{children}</div>
   </div>
 }
 
@@ -732,16 +751,16 @@ export default function App(){
     <style>{GS}</style>
 
     {/* HEADER */}
-    <div style={{background:C.navy,padding:'0 24px',display:'flex',alignItems:'center',justifyContent:'space-between',height:54,boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
+    <div className="m-wrap" style={{background:C.navy,padding:'8px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:54,boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
       <div style={{display:'flex',alignItems:'center',gap:12}}>
         <LogoMark size={36}/>
         <div>
-          <div style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:'#FFF',fontWeight:800,letterSpacing:'-0.02em',lineHeight:1}}>EL RETIRO</div>
-          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',letterSpacing:'0.06em',marginTop:1}}>DE NUESTRO CAMPO A TU MESA</div>
+          <div className="m-h-title" style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:'#FFF',fontWeight:800,letterSpacing:'-0.02em',lineHeight:1}}>EL RETIRO</div>
+          <div className="m-h-sub" style={{fontSize:10,color:'rgba(255,255,255,0.6)',letterSpacing:'0.06em',marginTop:1}}>DE NUESTRO CAMPO A TU MESA</div>
         </div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
-        <span style={{fontSize:10,color:'#93C5FD',fontFamily:"'JetBrains Mono',monospace"}}>{saveStatus}</span>
+        <span className="m-hide" style={{fontSize:10,color:'#93C5FD',fontFamily:"'JetBrains Mono',monospace"}}>{saveStatus}</span>
         <SaveBtn onSave={handleSave} saved={savedAnim}/>
         <button onClick={resetAll} style={{padding:'7px 14px',fontSize:11,fontWeight:500,cursor:'pointer',border:'1px solid rgba(255,255,255,0.2)',borderRadius:8,background:'transparent',color:'#CBD5E1',fontFamily:"'Inter',sans-serif"}}>↺ Restablecer</button>
       </div>
@@ -756,21 +775,21 @@ export default function App(){
 
     {/* ══ FINANCIERO ══ */}
     {mod==='fin'&&<>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+      <div className="m-strip" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
         <SI label="Kg premium/sem" value={Math.round(kgPremiumS)+' kg'} variant="green"/>
         <Div/><SI label="Costo/kg premium" value={fmt(costoKg)} variant="amber"/>
         <Div/><SI label="Precio premium/kg" value={fmt(precioVentaPrem)}/>
         <Div/><SI label="Margen bruto" value={fmtPct(margenPct)} variant={mv}/>
         <Div/><SI label="Resultado/mes" value={fmt(resMes)} variant={rv}/>
-        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+        <div className="m-tabs" style={{marginLeft:'auto',display:'flex',gap:4}}>
           {[['costos','Campo'],['frideza','Frideza'],['local','Local'],['comercial','Comercial'],['resumen','Resultado']].map(([id,label])=>(
             <Tab key={id} active={finTab===id} onClick={()=>setFinTab(id)} label={label}/>
           ))}
         </div>
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'1fr 330px',minHeight:'calc(100vh - 172px)'}}>
-        <div style={{padding:'20px 24px',overflowY:'auto'}}>
+      <div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 330px',minHeight:'calc(100vh - 172px)'}}>
+        <div className="m-pad" style={{padding:'20px 24px',overflowY:'auto'}}>
 
           {/* Rendimiento */}
           <div style={{background:'#FFFBEB',border:`1px solid ${C.amberBorder}`,borderRadius:14,padding:18,marginBottom:20,boxShadow:sh}}>
@@ -842,7 +861,7 @@ export default function App(){
                     {!cuadra && <div style={{fontSize:11,color:'#92400E',marginTop:8,lineHeight:1.5}}>El hueso+merma da {pctMerma.toFixed(0)}% (lo normal es 12-18%). Si te da muy bajo, te faltan cargar cortes en el mix; si muy alto, sobran kg. Usá "Restablecer" para volver al despiece real.</div>}
                   </div>
                 })()}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
+                <div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14,marginBottom:16}}>
                   <div style={{background:C.greenBg,border:`1px solid ${C.greenBorder}`,borderRadius:12,padding:'14px 16px'}}>
                     <div style={{fontSize:10,fontWeight:700,color:C.green,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>EL RETIRO (vos)</div>
                     <div style={{fontFamily:"'Inter',sans-serif",fontSize:24,fontWeight:700,color:C.greenDark}}>{kgPremium.toFixed(0)} kg</div>
@@ -908,7 +927,7 @@ export default function App(){
           </Card>}
 
           {finTab==='resumen'&&<>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
+            <div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20,marginBottom:20}}>
               <Card title="Composición del costo por kg premium" badge="Desglose" badgeColor="blue">
                 <div style={{padding:20}}>
                   <Bar label="Animal neto (post-canje Frideza)" value={b1kg} max={maxKg} color={C.green}/>
@@ -964,7 +983,7 @@ export default function App(){
         </div>
 
         {/* RIGHT PANEL */}
-        <div style={{background:C.surface,borderLeft:`1px solid ${C.border}`,padding:18,position:'sticky',top:0,maxHeight:'calc(100vh - 172px)',overflowY:'auto',boxShadow:'-2px 0 8px rgba(0,0,0,0.04)'}}>
+        <div className="m-side" style={{background:C.surface,borderLeft:`1px solid ${C.border}`,padding:18,position:'sticky',top:0,maxHeight:'calc(100vh - 172px)',overflowY:'auto',boxShadow:'-2px 0 8px rgba(0,0,0,0.04)'}}>
           <div style={{fontFamily:"'Inter',sans-serif",fontSize:15,color:C.navy,fontWeight:600,marginBottom:14,paddingBottom:10,borderBottom:`1px solid ${C.border}`}}>📊 Tablero en tiempo real</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:7,marginBottom:14}}>
             <Kpi label="Kg premium / semana" value={Math.round(kgPremiumS)+' kg'} sub={v.animales_semana+' novillos · solo premium'} variant="green" full/>
@@ -1020,13 +1039,13 @@ export default function App(){
 
     {/* ══ MIX DE CORTES ══ */}
     {mod==='mix'&&<>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
+      <div className="m-strip" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
         <SI label="Precio premium ponderado" value={fmt(mixPrecioPrem)+'/kg'} variant="green"/>
         <Div/><SI label="Ingreso premium/sem" value={fmt(ingPremiumS)}/>
         <Div/><SI label="Margen premium" value={fmt(ingPremiumS-totS)} variant={ingPremiumS-totS>=0?'green':'red'}/>
         <Div/><SI label="Resultado mensual" value={fmt((ingPremiumS-totS)*4.33)} variant={(ingPremiumS-totS)*4.33>=0?'green':'red'}/>
       </div>
-      <div style={{padding:'24px'}}>
+      <div className="m-pad" style={{padding:'24px'}}>
         <Alert type="info" icon="🥩" title="Modelo dos canales — clic en el botón para reasignar un corte"
           body={`Vos comercializás los cortes PREMIUM (${v.mix.filter(c=>c.premium).length} cortes, ${kgPremium.toFixed(0)} kg/animal). Frideza comercializa el resto (${v.mix.filter(c=>!c.premium).length} cortes, ${kgNoPrem.toFixed(0)} kg/animal) y se cobra con ellos vía canje. El precio premium ponderado es lo que determina tu margen real.`}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 260px',gap:20}}>
@@ -1104,16 +1123,16 @@ export default function App(){
 
     {/* ══ FLUJO DE CAJA ══ */}
     {mod==='caja'&&<>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
+      <div className="m-strip" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
         <SI label="Capital trabajo inicial" value={fmt(cfS*4.33*3)} variant="amber"/>
         <Div/><SI label="Break-even" value={beMonth>0?'Mes '+beMonth:'> 12 meses'} variant={beMonth>0&&beMonth<=8?'green':'red'}/>
         <Div/><SI label="Inversión total" value={fmt(v.cj_inversion)} variant="red"/>
-        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+        <div className="m-tabs" style={{marginLeft:'auto',display:'flex',gap:4}}>
           <Tab active={cajaTab==='mensual'} onClick={()=>setCajaTab('mensual')} label="Flujo mensual"/>
           <Tab active={cajaTab==='capital'} onClick={()=>setCajaTab('capital')} label="Capital de trabajo"/>
         </div>
       </div>
-      <div style={{padding:'24px'}}>
+      <div className="m-pad" style={{padding:'24px'}}>
         {cajaTab==='mensual'&&<>
           <div style={{display:'flex',gap:12,marginBottom:16,flexWrap:'wrap',alignItems:'stretch'}}>
             <div style={{background:C.surface,border:`1px solid ${C.border2}`,borderRadius:12,padding:'14px 18px',boxShadow:sh,display:'flex',flexDirection:'column',justifyContent:'center',minWidth:220}}>
@@ -1171,7 +1190,7 @@ export default function App(){
             </table>
           </Card>
         </>}
-        {cajaTab==='capital'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {cajaTab==='capital'&&<div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
           <Card title="Inversión inicial requerida" badge="Estimación" badgeColor="amber">
             <div style={{padding:20}}>
               {[['Cámara frigorífica (usada buen estado)','$6M – $8M'],['Envasadora al vacío doble cámara','$1.5M – $2.5M'],['Sierra + mesa acero inox.','$800k – $1.2M'],['Balanza + impresora etiquetas','$600k – $900k'],['Bolsas isotérmicas + equipo delivery','$400k – $600k'],['Adecuación edilicia SENASA','$2M – $5M'],['Habilitación + tramitación','$500k – $1M'],['Capital de trabajo (3 meses)','$8M – $12M']].map(([label,val])=>(
@@ -1202,19 +1221,19 @@ export default function App(){
 
     {/* ══ CINTA PRODUCTIVA ══ */}
     {mod==='prod'&&<>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+      <div className="m-strip" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
         <SI label="Vacas madre" value={v.vacas_madre}/>
         <Div/><SI label={`Destete ${v.tasa_destete}%`} value={terneroPropios+'/año'} variant="green"/>
         <Div/><SI label="Compras" value={comprasAnio+'/año'} variant="amber"/>
         <Div/><SI label="Ciclo propio" value="27–28 meses" variant="amber"/>
         <Div/><SI label="Faena" value={anim+'/sem · '+faenaMes+'/mes'} variant="green"/>
-        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+        <div className="m-tabs" style={{marginLeft:'auto',display:'flex',gap:4}}>
           {[['gantt','Flujo anual'],['compras','Compras'],['inquilino','Inquilino'],['supl','Suplementación']].map(([id,label])=>(
             <Tab key={id} active={prodTab===id} onClick={()=>setProdTab(id)} label={label}/>
           ))}
         </div>
       </div>
-      <div style={{padding:'24px'}}>
+      <div className="m-pad" style={{padding:'24px'}}>
         {prodTab==='gantt'&&<>
           <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:20,padding:18,background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,boxShadow:sh}}>
             {[['Vacas madre','vacas_madre','cab','1'],['Tasa de destete','tasa_destete','%','1'],['Animales a faenar/semana','animales_semana','cab/sem','1']].map(([label,key,unit,step])=>(
@@ -1283,7 +1302,7 @@ export default function App(){
         {prodTab==='compras'&&<>
           <Alert type="info" icon="📊" title="Precio real ternero destete · Mayo 2026"
             body="CACG abril 2026: $6.580/kg promedio → animal 200 kg = $1.316.000. El modelo original usaba $180.000. Diferencia: $1.136.000/cabeza."/>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
             {[{title:`Ventana ene–mar (${Math.round(comprasAnio*0.4)} animales)`,sub:'Mejor precio relativo del año',rows:[['Precio estimado','$6.200–6.800/kg vivo','amber'],['Costo por animal','$1.240.000–1.360.000','amber'],['Suplementación adicional','$105.000/cab (7 meses)','red'],['Riesgo','Bajo — control total','green']]},
               {title:'⚠ Evitar agosto',sub:'Pico estacional garantizado',rows:[['Precio agosto','$7.200–8.000/kg vivo','red'],['Sobrecosto vs. enero','+$120.000–280.000/cab','red'],['Causa','Todos los invernadores comprando','red'],['Alternativa','Esperar → octubre','green']]},
               {title:'Opción sep (recriados 310 kg)',sub:'Sin suplementación · directo feedlot',rows:[['Precio estimado','~$1.581.000–1.674.000/cab','amber'],['Ahorro suplementación','$105.000/cab','green'],['Costo total campo','~$1.784.000/cab','green'],['Ventaja vs. ternero','$68.000 menos/animal','green']]},
@@ -1314,7 +1333,7 @@ export default function App(){
               </div>
             ))}
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+          <div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
             {[{title:'Opción A — Cobro en dinero',sub:'Situación actual',rec:false,rows:[['Ingreso mensual',fmt(v.inq_animales*v.inq_kg*v.inq_precio),'default'],['Ingreso anual nominal',fmt(inqIngA),'default'],['Erosión inflacionaria','~30% en 6 meses','red'],['Poder real en dic-26',fmt(inqIngA*0.7),'amber'],['Aporte al flujo D2C','Ninguno','red']],foot:['Valor real anual',fmt(inqIngA*0.7),'amber']},
               {title:'Opción B — Cobro en terneros',sub:'✓ Recomendado',rec:true,rows:[['Terneros equiv. / año',inqT+' terneros de destete','green'],['Reducción compras ext.',Math.round((inqT/67)*100)+'% menos','green'],['Ahorro suplementación',fmt(inqT*105000),'green'],['Protección inflacionaria','Total — indexado al novillo','green'],['Aporte flujo mensual',(inqT/12).toFixed(1)+' animales/mes','green']],foot:['Impacto flujo mensual',(inqT/12).toFixed(1)+' animales/mes','green']},
             ].map(card=>(
@@ -1354,7 +1373,7 @@ export default function App(){
               </div>
             ))}
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
+          <div className="m-grid4" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:20}}>
             <Kpi label="Costo supl./animal" value={fmt(sCostoA)} sub="por temporada invernal" variant="amber"/>
             <Kpi label="Impacto en kg neto" value={fmt(sCostoA/((200+sKgEx)*0.435))} sub="$/kg adicional" variant="amber"/>
             <Kpi label="Kg extra ganados" value={sKgEx.toFixed(1)+' kg'} sub="vs. sin suplementar" variant="green"/>
@@ -1369,14 +1388,14 @@ export default function App(){
 
     {/* ══ STOCK & LOTES ══ */}
     {mod==='stock'&&<>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
+      <div className="m-strip" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center',flexWrap:'wrap'}}>
         <SI label="Animales completos en stock" value={animalesCompletos.toFixed(1)} variant={animalesCompletos>=2?'green':animalesCompletos>=1?'amber':'red'}/>
         <Div/><SI label="Kg disponibles" value={Math.round(stock.reduce((a,s)=>a+(s.kgDisponible||0),0))+' kg'} variant="green"/>
         <Div/><SI label="Kg reservados" value={Math.round(stock.reduce((a,s)=>a+(s.kgReservado||0),0))+' kg'} variant="amber"/>
         <Div/><SI label="Cortes / Lotes" value={stock.length+' / '+lotes.length}/>
         <Div/><SI label="Valor stock" value={fmt(stock.reduce((a,s)=>a+(s.kgDisponible||0)*(s.precioKg||0),0))} variant="green"/>
       </div>
-      <div style={{padding:'24px'}}>
+      <div className="m-pad" style={{padding:'24px'}}>
         <Alert type="info" icon="📦" title="Este stock se sincroniza en vivo con la web pública"
           body="Cargá un lote cuando llegan los premium envasados de Frideza y el stock se suma automáticamente. La web del cliente (Fase 3) lee esta misma colección de Firestore: cuando alguien compra, el stock baja en tiempo real y vos lo ves acá."/>
 
@@ -1415,7 +1434,7 @@ export default function App(){
             </div>}
           </div>
 
-          <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:20}}>
+          <div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:20}}>
             <Card title="Stock en vivo por corte" badge="Cargá lo que entrega Frideza" badgeColor="green">
               <table style={{width:'100%',borderCollapse:'collapse'}}>
                 <thead><tr style={{background:C.surface2}}>
@@ -1498,19 +1517,19 @@ export default function App(){
 
     {/* ══ AUDITORÍA ══ */}
     {mod==='audit'&&<>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
+      <div className="m-strip" style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:'10px 24px',display:'flex',gap:16,alignItems:'center'}}>
         <SI label="Riesgos críticos" value="4" variant="red"/>
         <Div/><SI label="Riesgos medios" value="5" variant="amber"/>
         <Div/><SI label="Mejoras incorporadas" value="7" variant="green"/>
         <Div/><SI label="Viabilidad mayo 2026" value="Confirmada" variant="green"/>
-        <div style={{marginLeft:'auto',display:'flex',gap:4}}>
+        <div className="m-tabs" style={{marginLeft:'auto',display:'flex',gap:4}}>
           {[['riesgos','Riesgos'],['precios','Precios'],['checklist','Checklist']].map(([id,label])=>(
             <Tab key={id} active={auditTab===id} onClick={()=>setAuditTab(id)} label={label}/>
           ))}
         </div>
       </div>
-      <div style={{padding:'24px'}}>
-        {auditTab==='riesgos'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+      <div className="m-pad" style={{padding:'24px'}}>
+        {auditTab==='riesgos'&&<div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
           {[{type:'error',icon:'🔴',title:'Habilitación SENASA / RPPA del local',body:'El proceso de habilitación como establecimiento elaborador en Córdoba toma 3–8 meses. Los costos fijos corren sin ingresos. Iniciar el trámite antes de firmar el contrato del local y contratar asesor bromatológico desde el día 0.'},
             {type:'error',icon:'🔴',title:'Capital inmovilizado en el ciclo productivo',body:'67 animales comprados × $1.316.000 = $88M inmovilizados. Los propios tardan 23 meses desde el nacimiento. Evaluar líneas ganaderas BNA/BICE o escalar gradualmente.'},
             {type:'error',icon:'🔴',title:'Corte oscuro (DFD) — pérdida de lote',body:'Con 500–600 km de viaje en verano, la probabilidad de DFD en 1 animal/mes es real. Un animal afectado = 33% de producción perdida. Protocolo: ayuno 12h + viaje nocturno + reserva de contingencia en B2.'},
@@ -1522,7 +1541,7 @@ export default function App(){
             {type:'info',icon:'🔵',title:'Continuidad de la cadena de frío',body:'Falla del equipo de frío en el camión = pérdida del lote. Exigir seguro de carga + termógrafo certificado en cada viaje.'},
           ].map(r=><Alert key={r.title} type={r.type} icon={r.icon} title={r.title} body={r.body}/>)}
         </div>}
-        {auditTab==='precios'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {auditTab==='precios'&&<div className="m-grid2" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
           <Card title="Hacienda en pie — Remates feria abril 2026" badge="CACG" badgeColor="blue">
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead><tr style={{background:C.surface2}}>{['Categoría','Peso','$/kg prom.'].map(h=><th key={h} style={{fontSize:10,fontWeight:600,color:C.text3,padding:'9px 14px',textAlign:'left',borderBottom:`1px solid ${C.border}`,textTransform:'uppercase',letterSpacing:'.05em'}}>{h}</th>)}</tr></thead>
